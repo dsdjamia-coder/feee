@@ -1,0 +1,67 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function validGender(gender) {
+      return gender in ['M', 'F'];
+    }
+
+    function validStudentClass(studentClass) {
+      return studentClass in ['+2', '+1', '10', '9', '8', '7', '6', '5', '4', '3', '2', '1'];
+    }
+
+    function isValidStudent() {
+      return request.resource.data.keys().hasAll([
+        'name', 'studentClass', 'gender', 'guardian', 'phone', 'pendingArrears',
+        'groupFee', 'payments', 'extraFeePayments', 'groupId', 'profile'
+      ])
+      && request.resource.data.keys().hasOnly([
+        'name', 'studentClass', 'gender', 'guardian', 'phone', 'pendingArrears',
+        'groupFee', 'payments', 'extraFeePayments', 'groupId', 'profile'
+      ])
+      && request.resource.data.name is string
+      && request.resource.data.groupId is string
+      && validStudentClass(request.resource.data.studentClass)
+      && validGender(request.resource.data.gender)
+      && request.resource.data.pendingArrears is int
+      && request.resource.data.payments is map
+      && request.resource.data.extraFeePayments is map
+      && request.resource.data.profile is map;
+    }
+
+    function isValidSettings() {
+      return request.resource.data.keys().hasAll([
+        'globalBaseFee', 'academicStartMonth', 'academicEndMonth',
+        'institutionName', 'institutionPlace', 'registerNumber', 'logo', 'extraFees', 'receiptRequired', 'lastReceiptNumber', 'headerColor'
+      ])
+      && request.resource.data.keys().hasOnly([
+        'globalBaseFee', 'academicStartMonth', 'academicEndMonth',
+        'institutionName', 'institutionPlace', 'registerNumber', 'logo', 'extraFees', 'receiptRequired', 'lastReceiptNumber', 'headerColor'
+      ])
+      && request.resource.data.globalBaseFee is int
+      && request.resource.data.academicStartMonth is string
+      && request.resource.data.academicEndMonth is string
+      && request.resource.data.institutionName is string
+      && request.resource.data.extraFees is list
+      && request.resource.data.receiptRequired is bool
+      && request.resource.data.lastReceiptNumber is string
+      && request.resource.data.headerColor is string;
+    }
+
+    match /students/{studentId} {
+      allow read: if true;
+      allow create, update: if isValidStudent();
+      allow delete: if true;
+    }
+
+    match /settings/global {
+      allow read: if true;
+      allow create, update: if isValidSettings();
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
