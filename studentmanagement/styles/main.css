@@ -1,0 +1,13 @@
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        .table-container { max-height: calc(100vh - 230px); overflow: auto; }
+        .custom-tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
+
+.app-header { position: sticky; top: 0; z-index: 60; }
+.student-controls { position: sticky; top: 80px; z-index: 50; }
+.student-table-head th { position: sticky; top: 0; z-index: 45; background: #f3f4f6; }
+
+@media (max-width: 1024px) { .table-container { max-height: calc(100vh - 300px); } }
