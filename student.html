@@ -94,24 +94,15 @@
 
                     <!-- Student Avatar & Main Identity Info -->
                     <div class="p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 border-b border-slate-100 bg-gradient-to-b from-white to-slate-50/50">
-                        <!-- Profile Photo (1. Photo) -->
+                        <!-- Profile Photo -->
                         <div class="flex flex-col items-center shrink-0">
-                            <div class="relative group">
+                            <div class="relative">
                                 <div id="dash-avatar" class="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-white shadow-xl ring-2 ring-blue-100 flex items-center justify-center bg-slate-100 text-slate-400 text-4xl font-black cursor-pointer hover:opacity-95 transition-all">
                                     <i class="fas fa-user"></i>
                                 </div>
-                                <button type="button" id="student-view-photo-btn" class="absolute bottom-0 right-0 bg-white text-blue-600 hover:text-blue-800 w-8 h-8 rounded-full border border-blue-200 shadow-md flex items-center justify-center text-xs transition" title="View full photo">
-                                    <i class="fas fa-search-plus"></i>
-                                </button>
-                            </div>
-                            
-                            <!-- Photo Edit Controls (strictly below the photo with clear spacing, NO overlay) -->
-                            <div class="flex items-center gap-2 mt-3.5 hidden" id="student-photo-controls">
-                                <button type="button" id="student-photo-camera-btn" class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs">
-                                    <i class="fas fa-camera"></i> Camera
-                                </button>
-                                <button type="button" id="student-photo-upload-btn" class="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs" onclick="document.getElementById('student-photo-file-input').click()">
-                                    <i class="fas fa-upload"></i> Upload
+                                <!-- Pencil Edit Button for Top Identity (Photo, Name, Class, Adm No) -->
+                                <button type="button" id="student-edit-top-btn" class="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white w-9 h-9 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-sm transition" title="Edit Photo, Name, Class & Adm No">
+                                    <i class="fas fa-pencil-alt"></i>
                                 </button>
                             </div>
                             <input type="file" id="student-photo-file-input" accept="image/*" class="hidden">
@@ -121,9 +112,6 @@
                         <div class="flex-1 text-center sm:text-left space-y-2.5 min-w-0 w-full">
                             <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
                                 <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight" id="dash-name">-</h1>
-                                <button type="button" id="student-edit-details-btn" class="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs hidden" title="Edit Profile Details">
-                                    <i class="fas fa-pencil-alt"></i> Edit Details
-                                </button>
                             </div>
 
                             <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2">
@@ -145,196 +133,226 @@
                         </div>
                     </div>
 
-                    <!-- 15 DEFINED FIELDS COMPREHENSIVE GRID -->
+                    <!-- STUDENT DETAILS SECTION (Non-repeating fields, individual edit buttons) -->
                     <div class="p-6 sm:p-8">
                         <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-                            <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                                <i class="fas fa-id-card-clip text-blue-600"></i> Comprehensive Student Records (15 Defined Fields)
+                            <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                                <i class="fas fa-id-card text-blue-600"></i> Student Information
                             </h3>
-                            <span class="text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">Verified Data</span>
+                            <span class="text-xs font-semibold text-slate-400">Click pencil to edit any field</span>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                            <!-- 1. Photo -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-camera"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">1. Photo</div>
-                                    <div class="text-xs font-bold text-slate-800 break-words leading-snug" id="dash-photo-status">Available</div>
-                                </div>
-                            </div>
-
-                            <!-- 2. Class -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-school"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">2. Class *</div>
-                                    <div class="text-xs font-bold text-slate-800 break-words font-mono leading-snug" id="dash-class-val">-</div>
-                                </div>
-                            </div>
-
-                            <!-- 3. ID / UID -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-fingerprint"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">3. ID/UID</div>
-                                    <div class="text-xs font-bold text-slate-800 break-words font-mono leading-snug" id="dash-uid-val">-</div>
-                                </div>
-                            </div>
-
-                            <!-- 4. Student Name -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-user-graduate"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">4. Student Name *</div>
-                                    <div class="text-xs font-bold text-slate-800 break-words leading-snug" id="dash-name-val">-</div>
-                                </div>
-                            </div>
-
-                            <!-- 5. Father's Name -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-user-tie"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">5. Father's Name</div>
-                                    <div class="text-xs font-bold text-slate-800 break-words leading-snug" id="dash-father">-</div>
-                                </div>
-                            </div>
-
-                            <!-- 6. Mother's Name -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-female"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">6. Mother's Name</div>
-                                    <div class="text-xs font-bold text-slate-800 break-words leading-snug" id="dash-mother">-</div>
-                                </div>
-                            </div>
-
-                            <!-- 7. Gender -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-venus-mars"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">7. Gender *</div>
-                                    <div class="text-xs font-bold text-slate-800 break-words leading-snug" id="dash-gender-val">-</div>
-                                </div>
-                            </div>
-
-                            <!-- 8. Admission Number (Adm. No.) -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-hashtag"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">8. Admission Number (Adm. No.)</div>
-                                    <div class="text-xs font-bold text-slate-800 break-words font-mono leading-snug" id="dash-adm-val">-</div>
-                                </div>
-                            </div>
-
-                            <!-- 9. Date of Birth -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-cake-candles"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">9. Date of Birth</div>
-                                    <div class="text-xs font-bold text-slate-800 break-words font-mono leading-snug" id="dash-dob">-</div>
-                                </div>
-                            </div>
-
-                            <!-- 10. Date of Admission -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-cyan-100 text-cyan-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-calendar-check"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">10. Date of Admission</div>
-                                    <div class="text-xs font-bold text-slate-800 break-words font-mono leading-snug" id="dash-adm-date">-</div>
-                                </div>
-                            </div>
-
-                            <!-- 11. Student Status -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-user-check"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">11. Student Status</div>
-                                    <div class="text-xs font-bold text-slate-800 break-words leading-snug" id="dash-status-val">Active</div>
-                                </div>
-                            </div>
-
-                            <!-- 12. Aadhaar Number -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-address-card"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">12. Aadhaar Number</div>
-                                    <div class="text-xs font-bold text-slate-800 break-words font-mono leading-snug" id="dash-adhaar">-</div>
-                                </div>
-                            </div>
-
-                            <!-- 13. Father's Phone Number -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-phone"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">13. Father's Phone Number</div>
-                                    <div class="flex items-center gap-2 mt-0.5">
-                                        <a href="#" id="dash-mobile-link" class="text-xs font-bold text-blue-700 hover:underline font-mono break-all leading-snug"><span id="dash-mobile">-</span></a>
-                                        <button type="button" class="copy-pay-detail-btn inline-flex items-center justify-center p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition" data-copy-value="" id="dash-mobile-copy" title="Copy Number"><i class="fas fa-copy text-xs"></i></button>
+                            <!-- 1. ID / UID -->
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between gap-3 group hover:border-blue-200 transition">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <div class="w-10 h-10 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 text-base">
+                                        <i class="fas fa-fingerprint"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">ID / UID</div>
+                                        <div class="text-xs font-bold text-slate-800 break-words font-mono leading-snug" id="dash-uid-val">-</div>
                                     </div>
                                 </div>
+                                <button type="button" class="field-edit-btn p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 shadow-xs transition" data-field="uid" data-label="ID / UID" data-type="text" title="Edit UID">
+                                    <i class="fas fa-pencil-alt text-xs"></i>
+                                </button>
                             </div>
 
-                            <!-- 14. Mother's Phone Number -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-phone-volume"></i>
-                                </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">14. Mother's Phone Number</div>
-                                    <div class="flex items-center gap-2 mt-0.5">
-                                        <a href="#" id="dash-mother-mobile-link" class="text-xs font-bold text-pink-700 hover:underline font-mono break-all leading-snug"><span id="dash-mother-mobile">-</span></a>
-                                        <button type="button" class="copy-pay-detail-btn inline-flex items-center justify-center p-1 rounded text-slate-400 hover:text-pink-600 hover:bg-pink-50 transition" data-copy-value="" id="dash-mother-mobile-copy" title="Copy Number"><i class="fas fa-copy text-xs"></i></button>
+                            <!-- 2. Samastha ID -->
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between gap-3 group hover:border-blue-200 transition">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <div class="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 text-base">
+                                        <i class="fas fa-certificate"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Samastha ID</div>
+                                        <div class="text-xs font-bold text-slate-800 break-words font-mono leading-snug" id="dash-samastha-val">-</div>
                                     </div>
                                 </div>
+                                <button type="button" class="field-edit-btn p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 shadow-xs transition" data-field="samasthaId" data-label="Samastha ID" data-type="text" title="Edit Samastha ID">
+                                    <i class="fas fa-pencil-alt text-xs"></i>
+                                </button>
                             </div>
 
-                            <!-- Additional Concession Box if Applicable -->
-                            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 hidden items-center gap-3" id="dash-conc-group">
-                                <div class="w-10 h-10 rounded-lg bg-emerald-200 text-emerald-800 flex items-center justify-center shrink-0 text-base">
-                                    <i class="fas fa-tags"></i>
+                            <!-- 3. Date of Birth -->
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between gap-3 group hover:border-blue-200 transition">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <div class="w-10 h-10 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 text-base">
+                                        <i class="fas fa-cake-candles"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Date of Birth</div>
+                                        <div class="text-xs font-bold text-slate-800 break-words font-mono leading-snug" id="dash-dob">-</div>
+                                    </div>
                                 </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-emerald-700 tracking-wider">Fee Concession</div>
-                                    <div class="text-xs font-bold text-emerald-900 break-words leading-snug" id="dash-conc">-</div>
-                                </div>
+                                <button type="button" class="field-edit-btn p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 shadow-xs transition" data-field="dob" data-label="Date of Birth" data-type="date" title="Edit Date of Birth">
+                                    <i class="fas fa-pencil-alt text-xs"></i>
+                                </button>
                             </div>
 
-                            <!-- 15. Permanent Address (Spans Full Width) -->
-                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-start gap-3 sm:col-span-2 lg:col-span-3">
-                                <div class="w-10 h-10 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 text-base mt-0.5">
-                                    <i class="fas fa-map-location-dot"></i>
+                            <!-- 4. Gender -->
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between gap-3 group hover:border-blue-200 transition">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 text-base">
+                                        <i class="fas fa-venus-mars"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Gender</div>
+                                        <div class="text-xs font-bold text-slate-800 break-words leading-snug" id="dash-gender-val">-</div>
+                                    </div>
                                 </div>
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">15. Permanent Address</div>
-                                    <div class="text-xs font-medium text-slate-800 mt-0.5 leading-relaxed break-words" id="dash-addr">-</div>
+                                <button type="button" class="field-edit-btn p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 shadow-xs transition" data-field="gender" data-label="Gender" data-type="select" data-options="Male,Female" title="Edit Gender">
+                                    <i class="fas fa-pencil-alt text-xs"></i>
+                                </button>
+                            </div>
+
+                            <!-- 5. Date of Admission -->
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between gap-3 group hover:border-blue-200 transition">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <div class="w-10 h-10 rounded-lg bg-cyan-100 text-cyan-700 flex items-center justify-center shrink-0 text-base">
+                                        <i class="fas fa-calendar-check"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Date of Admission</div>
+                                        <div class="text-xs font-bold text-slate-800 break-words font-mono leading-snug" id="dash-adm-date">-</div>
+                                    </div>
                                 </div>
+                                <button type="button" class="field-edit-btn p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 shadow-xs transition" data-field="admDate" data-label="Date of Admission" data-type="date" title="Edit Date of Admission">
+                                    <i class="fas fa-pencil-alt text-xs"></i>
+                                </button>
+                            </div>
+
+                            <!-- 6. Student Status -->
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between gap-3 group hover:border-blue-200 transition">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 text-base">
+                                        <i class="fas fa-user-check"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Student Status</div>
+                                        <div class="text-xs font-bold text-slate-800 break-words leading-snug" id="dash-status-val">Active</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="field-edit-btn p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 shadow-xs transition" data-field="status" data-label="Student Status" data-type="select" data-options="Active,Inactive,Graduated" title="Edit Student Status">
+                                    <i class="fas fa-pencil-alt text-xs"></i>
+                                </button>
+                            </div>
+
+                            <!-- 7. Aadhaar Number -->
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between gap-3 group hover:border-blue-200 transition">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <div class="w-10 h-10 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center shrink-0 text-base">
+                                        <i class="fas fa-address-card"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Aadhaar Number</div>
+                                        <div class="text-xs font-bold text-slate-800 break-words font-mono leading-snug" id="dash-adhaar">-</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="field-edit-btn p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 shadow-xs transition" data-field="adhaar" data-label="Aadhaar Number" data-type="text" title="Edit Aadhaar Number">
+                                    <i class="fas fa-pencil-alt text-xs"></i>
+                                </button>
+                            </div>
+
+                            <!-- 8. Father's Name -->
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between gap-3 group hover:border-blue-200 transition">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-base">
+                                        <i class="fas fa-user-tie"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Father's Name</div>
+                                        <div class="text-xs font-bold text-slate-800 break-words leading-snug" id="dash-father">-</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="field-edit-btn p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 shadow-xs transition" data-field="father" data-label="Father's Name" data-type="text" title="Edit Father's Name">
+                                    <i class="fas fa-pencil-alt text-xs"></i>
+                                </button>
+                            </div>
+
+                            <!-- 9. Father's Phone Number -->
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between gap-3 group hover:border-blue-200 transition">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 text-base">
+                                        <i class="fas fa-phone"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Father's Phone Number</div>
+                                        <div class="flex items-center gap-2 mt-0.5">
+                                            <a href="#" id="dash-mobile-link" class="text-xs font-bold text-blue-700 hover:underline font-mono break-all leading-snug"><span id="dash-mobile">-</span></a>
+                                            <button type="button" class="copy-pay-detail-btn inline-flex items-center justify-center p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition" data-copy-value="" id="dash-mobile-copy" title="Copy Number"><i class="fas fa-copy text-xs"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="field-edit-btn p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 shadow-xs transition" data-field="mobile" data-label="Father's Phone Number" data-type="tel" title="Edit Father's Phone">
+                                    <i class="fas fa-pencil-alt text-xs"></i>
+                                </button>
+                            </div>
+
+                            <!-- 10. Mother's Name -->
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between gap-3 group hover:border-blue-200 transition">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <div class="w-10 h-10 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center shrink-0 text-base">
+                                        <i class="fas fa-female"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Mother's Name</div>
+                                        <div class="text-xs font-bold text-slate-800 break-words leading-snug" id="dash-mother">-</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="field-edit-btn p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 shadow-xs transition" data-field="mother" data-label="Mother's Name" data-type="text" title="Edit Mother's Name">
+                                    <i class="fas fa-pencil-alt text-xs"></i>
+                                </button>
+                            </div>
+
+                            <!-- 11. Mother's Phone Number -->
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between gap-3 group hover:border-blue-200 transition">
+                                <div class="flex items-center gap-3 min-w-0 flex-1">
+                                    <div class="w-10 h-10 rounded-lg bg-pink-100 text-pink-700 flex items-center justify-center shrink-0 text-base">
+                                        <i class="fas fa-phone-volume"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Mother's Phone Number</div>
+                                        <div class="flex items-center gap-2 mt-0.5">
+                                            <a href="#" id="dash-mother-mobile-link" class="text-xs font-bold text-pink-700 hover:underline font-mono break-all leading-snug"><span id="dash-mother-mobile">-</span></a>
+                                            <button type="button" class="copy-pay-detail-btn inline-flex items-center justify-center p-1 rounded text-slate-400 hover:text-pink-600 hover:bg-pink-50 transition" data-copy-value="" id="dash-mother-mobile-copy" title="Copy Number"><i class="fas fa-copy text-xs"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="field-edit-btn p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 shadow-xs transition" data-field="motherMobile" data-label="Mother's Phone Number" data-type="tel" title="Edit Mother's Phone">
+                                    <i class="fas fa-pencil-alt text-xs"></i>
+                                </button>
+                            </div>
+
+                            <!-- 12. Permanent Address (Spans Full Width) -->
+                            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 flex items-start justify-between gap-3 sm:col-span-2 lg:col-span-3 group hover:border-blue-200 transition">
+                                <div class="flex items-start gap-3 min-w-0 flex-1">
+                                    <div class="w-10 h-10 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 text-base mt-0.5">
+                                        <i class="fas fa-map-location-dot"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Permanent Address</div>
+                                        <div class="text-xs font-medium text-slate-800 mt-0.5 leading-relaxed break-words" id="dash-addr">-</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="field-edit-btn p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 shadow-xs transition" data-field="address" data-label="Permanent Address" data-type="textarea" title="Edit Address">
+                                    <i class="fas fa-pencil-alt text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- AT THE VERY BOTTOM: CONCESSION & SIBLING GROUP CONFIGURATION -->
+                        <div class="mt-6 pt-5 border-t border-slate-200" id="dash-concession-group-section">
+                            <div class="flex items-center justify-between mb-3.5">
+                                <h4 class="text-sm font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                                    <i class="fas fa-users-rectangle text-indigo-600"></i> Fee Concession & Sibling Group
+                                </h4>
+                                <span id="dash-group-badge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">Checking...</span>
+                            </div>
+
+                            <div id="dash-concession-group-details" class="space-y-3">
+                                <!-- Dynamically populated by student-page.js -->
                             </div>
                         </div>
                     </div>
@@ -522,7 +540,89 @@
         </div>
     </div>
 
-    <!-- Student Edit Details Modal -->
+    <!-- Student Edit Top Identity Modal (Photo, Name, Class, Adm No only) -->
+    <div id="student-edit-top-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[10001] p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm sm:max-w-md w-full overflow-hidden p-6 space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-gray-900 text-sm sm:text-base flex items-center gap-2">
+                    <i class="fas fa-id-card-clip text-blue-600"></i> Edit Profile Header Details
+                </h3>
+                <button type="button" id="student-edit-top-close-btn" class="text-gray-400 hover:text-gray-700 text-xl font-bold w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100 transition">&times;</button>
+            </div>
+            <div class="space-y-4 max-h-[60vh] overflow-y-auto px-1">
+                <!-- Photo Edit inside modal -->
+                <div class="flex items-center gap-3.5 p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                    <div class="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md bg-slate-200 shrink-0 flex items-center justify-center">
+                        <img id="top-edit-photo-preview" src="" class="w-full h-full object-cover hidden" alt="Photo Preview">
+                        <i id="top-edit-photo-placeholder" class="fas fa-user text-2xl text-slate-400"></i>
+                    </div>
+                    <div class="flex-1 space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-700">Profile Photo</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" id="top-edit-camera-btn" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-xs">
+                                <i class="fas fa-camera"></i> Camera
+                            </button>
+                            <button type="button" id="top-edit-upload-btn" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-xs">
+                                <i class="fas fa-upload"></i> Upload
+                            </button>
+                            <button type="button" id="top-edit-remove-btn" class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-xs font-bold transition hidden">
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                    <input type="hidden" id="top-edit-photo-val" value="">
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-gray-700 block mb-1">Student Name <span class="text-red-500">*</span></label>
+                    <input type="text" id="top-edit-name" class="w-full p-2.5 border rounded-lg font-semibold uppercase text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-bold text-gray-700 block mb-1">Class</label>
+                        <input type="text" id="top-edit-class" class="w-full p-2.5 border rounded-lg font-semibold uppercase text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-700 block mb-1">Admission Number</label>
+                        <input type="text" id="top-edit-adm" class="w-full p-2.5 border rounded-lg font-semibold uppercase text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2.5 border-t pt-3">
+                <button type="button" id="student-edit-top-cancel-btn" class="px-4 py-2 border rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50 transition">Cancel</button>
+                <button type="button" id="student-edit-top-save-btn" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-md transition">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Edit Modal for Individual Fields -->
+    <div id="student-quick-edit-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[10001] p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden p-5 space-y-4">
+            <div class="flex justify-between items-center border-b pb-2.5">
+                <h3 class="font-bold text-gray-800 text-sm flex items-center gap-2" id="quick-edit-title">
+                    <i class="fas fa-pencil-alt text-blue-600"></i> Edit Field
+                </h3>
+                <button type="button" id="student-quick-edit-close-btn" class="text-gray-400 hover:text-gray-700 text-xl font-bold w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100 transition">&times;</button>
+            </div>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs font-bold text-gray-700 block mb-1" id="quick-edit-label">Field Value</label>
+                    <div id="quick-edit-input-container">
+                        <!-- Dynamically injected input based on field type -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 border-t pt-3">
+                <button type="button" id="student-quick-edit-cancel-btn" class="px-4 py-2 border rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50 transition">Cancel</button>
+                <button type="button" id="student-quick-edit-save-btn" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-md transition">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Edit Details Modal (Full Profile fallback) -->
     <div id="student-edit-details-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[10001] p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden p-5 space-y-4">
             <div class="flex justify-between items-center border-b pb-2">

@@ -1588,7 +1588,7 @@ fileInput.addEventListener('change', (e) => { if(e.target.files.length) handleEx
 function handleExcelFile(file) {
     const selectedBulkClass = (document.getElementById('bulk-upload-class')?.value || '').toUpperCase().trim();
     if(!selectedBulkClass) {
-        alert('ആദ്യം Target Class select ചെയ്യണം.');
+        alert('Please select a target class first.');
         fileInput.value = '';
         return;
     }
@@ -1675,8 +1675,8 @@ document.getElementById('start-upload-btn').addEventListener('click', async () =
     if(!requirePermission('students.manage')) return;
     if(excelParsedData.length === 0) return;
     const selectedBulkClass = (document.getElementById('bulk-upload-class')?.value || '').toUpperCase().trim();
-    if(!selectedBulkClass) return alert('Target Class select ചെയ്യണം.');
-    if(!confirm(`${excelParsedData.length} കുട്ടികളെ ആഡ് ചെയ്യട്ടെ?`)) return;
+    if(!selectedBulkClass) return alert('Please select a target class.');
+    if(!confirm(`Add ${excelParsedData.length} students?`)) return;
 
     const btn = document.getElementById('start-upload-btn'), bar = document.getElementById('upload-progress-bar'), fill = document.getElementById('upload-progress-fill'), status = document.getElementById('upload-status-text');
     const existingKeys = new Set(students.map((student) => `${student.class}::${student.adm || ''}::${student.uid || ''}::${student.name}`));
@@ -1903,7 +1903,7 @@ document.getElementById('sort-manage-students').addEventListener('change', rende
 document.getElementById('student-list-container').addEventListener('click', e => {
     const delBtn = e.target.closest('.delete-student-btn'), editBtn = e.target.closest('.edit-student-btn');
     if(delBtn) {
-        if(!confirm("ഈ വിദ്യാർത്ഥിയെയും അവരുടെ എല്ലാ ഫീസ് വിവരങ്ങളും സ്ഥിരമായി ഡിലീറ്റ് ചെയ്യട്ടെ?")) return;
+        if(!confirm("Are you sure you want to permanently delete this student and all linked records?")) return;
         deleteStudentsAndDependencies([delBtn.dataset.id]).then(() => logAuditEvent({ category: 'student', action: 'student.delete', entityType: 'student', entityId: delBtn.dataset.id, message: 'Student record deleted with linked cleanup.' })).catch((error) => {
             console.error('Failed to delete student dependencies.', error);
             alert('Failed to delete the student completely. Please try again.');
@@ -1915,69 +1915,86 @@ document.getElementById('student-list-container').addEventListener('click', e =>
         if(st) {
             editingStudentId = st.id;
             const prof = st.profile || {};
-            document.getElementById('e-stu-class').value = st.class||''; document.getElementById('e-stu-gender').value = st.gender||'Male';
-            document.getElementById('e-stu-name').value = st.name||''; document.getElementById('e-stu-adm').value = st.adm||'';
-            document.getElementById('e-stu-mob').value = st.mobile||''; document.getElementById('e-stu-fat').value = st.father||'';
-            document.getElementById('e-stu-mother').value = st.mother||prof.mother||'';
-            document.getElementById('e-stu-mother-mobile').value = st.motherMobile||prof.motherMobile||'';
-            document.getElementById('e-stu-uid').value = st.uid||''; document.getElementById('e-stu-addr').value = st.address||'';
-            document.getElementById('e-stu-status').value = normalizeStudentStatus(st.status);
-            document.getElementById('e-stu-dob').value = prof.dob || '';
-            document.getElementById('e-stu-adm-date').value = prof.admDate || '';
-            document.getElementById('e-stu-adhaar').value = prof.adhaar || '';
-            document.getElementById('e-stu-samastha').value = prof.samasthaId || '';
+            const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val !== undefined && val !== null ? val : ''; };
+            setVal('e-stu-class', st.class || st.studentClass || prof.class || '');
+            setVal('e-stu-gender', st.gender || prof.gender || 'Male');
+            setVal('e-stu-name', st.name || prof.name || '');
+            setVal('e-stu-adm', st.adm || prof.admNo || prof.adm || '');
+            setVal('e-stu-mob', st.mobile || prof.mobile || '');
+            setVal('e-stu-fat', st.father || prof.father || '');
+            setVal('e-stu-mother', st.mother || prof.mother || '');
+            setVal('e-stu-mother-mobile', st.motherMobile || prof.motherMobile || '');
+            setVal('e-stu-uid', st.uid || prof.uid || '');
+            setVal('e-stu-addr', st.address || prof.address || '');
+            setVal('e-stu-status', normalizeStudentStatus(st.status || prof.status));
+            setVal('e-stu-dob', prof.dob || st.dob || '');
+            setVal('e-stu-adm-date', prof.admDate || st.admDate || '');
+            setVal('e-stu-adhaar', prof.adhaar || st.adhaar || '');
+            setVal('e-stu-samastha', prof.samasthaId || st.samasthaId || '');
             updateAdminPhotoWidgetPreview(st.photo || st.profile?.photo || '', 'e-stu-photo-preview', 'e-stu-photo-placeholder', 'e-stu-remove-btn', 'e-stu-photo');
-            document.getElementById('edit-student-popup').classList.remove('hidden'); document.getElementById('edit-student-popup').classList.add('flex');
+            const popup = document.getElementById('edit-student-popup');
+            if (popup) {
+                popup.classList.remove('hidden');
+                popup.classList.add('flex');
+            }
         }
     }
 });
-document.getElementById('edit-student-update').addEventListener('click', async () => {
+document.getElementById('edit-student-update')?.addEventListener('click', async () => {
     if(!requirePermission('students.manage')) return;
-    if(!confirm("വിദ്യാർത്ഥിയുടെ വിവരങ്ങൾ അപ്ഡേറ്റ് ചെയ്യട്ടെ?")) return;
-    const updatedClass = document.getElementById('e-stu-class').value.toUpperCase().trim();
-    const photoVal = document.getElementById('e-stu-photo').value.trim();
-    const dobVal = document.getElementById('e-stu-dob').value;
-    const admDateVal = document.getElementById('e-stu-adm-date').value;
-    const adhaarVal = document.getElementById('e-stu-adhaar').value.trim();
-    const samasthaVal = document.getElementById('e-stu-samastha').value.trim();
+    if(!confirm("Are you sure you want to update this student's information?")) return;
+    const getVal = (id) => (document.getElementById(id)?.value || '').trim();
+    const updatedClass = getVal('e-stu-class').toUpperCase();
+    const photoVal = getVal('e-stu-photo');
+    const dobVal = document.getElementById('e-stu-dob')?.value || '';
+    const admDateVal = document.getElementById('e-stu-adm-date')?.value || '';
+    const adhaarVal = getVal('e-stu-adhaar');
+    const samasthaVal = getVal('e-stu-samastha');
 
     const existingStudent = rawStudents.find((student) => student.id === editingStudentId) || {};
     const updatedPayload = { 
-        name: document.getElementById('e-stu-name').value.toUpperCase().trim(), 
+        name: getVal('e-stu-name').toUpperCase(), 
         class: updatedClass, 
-        studentClass: updatedClass, // Save both for compatibility with React
-        gender: document.getElementById('e-stu-gender').value, 
-        status: normalizeStudentStatus(document.getElementById('e-stu-status').value), 
-        adm: document.getElementById('e-stu-adm').value.toUpperCase().trim(), 
-        mobile: document.getElementById('e-stu-mob').value.trim(), 
-        father: document.getElementById('e-stu-fat').value.toUpperCase().trim(), 
-        mother: document.getElementById('e-stu-mother').value.toUpperCase().trim(),
-        motherMobile: document.getElementById('e-stu-mother-mobile').value.trim(),
-        uid: document.getElementById('e-stu-uid').value.trim(), 
-        address: document.getElementById('e-stu-addr').value.trim(),
+        studentClass: updatedClass, // Save both for compatibility
+        gender: document.getElementById('e-stu-gender')?.value || 'Male', 
+        status: normalizeStudentStatus(document.getElementById('e-stu-status')?.value || 'Active'), 
+        adm: getVal('e-stu-adm').toUpperCase(), 
+        mobile: getVal('e-stu-mob'), 
+        father: getVal('e-stu-fat').toUpperCase(), 
+        mother: getVal('e-stu-mother').toUpperCase(),
+        motherMobile: getVal('e-stu-mother-mobile'),
+        uid: getVal('e-stu-uid'), 
+        address: getVal('e-stu-addr'),
         photo: photoVal,
         profile: {
             dob: dobVal,
-            address: document.getElementById('e-stu-addr').value.trim(),
+            address: getVal('e-stu-addr'),
             adhaar: adhaarVal,
-            admNo: document.getElementById('e-stu-adm').value.toUpperCase().trim(),
+            admNo: getVal('e-stu-adm').toUpperCase(),
             admDate: admDateVal,
             samasthaId: samasthaVal,
             photo: photoVal,
-            uid: document.getElementById('e-stu-uid').value.trim(),
-            father: document.getElementById('e-stu-fat').value.toUpperCase().trim(),
-            mother: document.getElementById('e-stu-mother').value.toUpperCase().trim(),
-            mobile: document.getElementById('e-stu-mob').value.trim(),
-            motherMobile: document.getElementById('e-stu-mother-mobile').value.trim(),
-            status: normalizeStudentStatus(document.getElementById('e-stu-status').value)
+            uid: getVal('e-stu-uid'),
+            father: getVal('e-stu-fat').toUpperCase(),
+            mother: getVal('e-stu-mother').toUpperCase(),
+            mobile: getVal('e-stu-mob'),
+            motherMobile: getVal('e-stu-mother-mobile'),
+            status: normalizeStudentStatus(document.getElementById('e-stu-status')?.value || 'Active')
         }
     };
-    await updateDoc(doc(db, `${BASE_PATH}/students`, editingStudentId), updatedPayload);
-    await setDoc(doc(db, `${BASE_PATH}/studentPhotoSubmissions`, editingStudentId), { photo: photoVal, updatedAt: Date.now() }, { merge: true });
-    await syncEnrollmentRecord(editingStudentId, { ...existingStudent, ...updatedPayload });
-    await syncActiveAcademicYearClasses([updatedClass]);
-    await logAuditEvent({ category: 'student', action: 'student.update', entityType: 'student', entityId: editingStudentId, message: 'Student record updated.' });
-    document.getElementById('edit-student-popup').classList.add('hidden');
+    try {
+        await updateDoc(doc(db, `${BASE_PATH}/students`, editingStudentId), updatedPayload);
+        await setDoc(doc(db, `${BASE_PATH}/studentPhotoSubmissions`, editingStudentId), { photo: photoVal, updatedAt: Date.now() }, { merge: true });
+        await syncEnrollmentRecord(editingStudentId, { ...existingStudent, ...updatedPayload });
+        await syncActiveAcademicYearClasses([updatedClass]);
+        await logAuditEvent({ category: 'student', action: 'student.update', entityType: 'student', entityId: editingStudentId, message: 'Student record updated.' });
+        document.getElementById('edit-student-popup').classList.add('hidden');
+        renderStudentList();
+        alert('Student information updated successfully!');
+    } catch (err) {
+        console.error('Failed to update student:', err);
+        alert('Failed to update student: ' + err.message);
+    }
 });
 document.getElementById('edit-student-cancel').addEventListener('click', () => document.getElementById('edit-student-popup').classList.add('hidden'));
 
@@ -2179,7 +2196,7 @@ document.getElementById('move-from-class').addEventListener('change', (e) => {
     if(!cName) { moveListCont.classList.add('hidden'); tgtCont.classList.add('hidden'); return; }
     const inClass = students.filter(s => s.class === cName).sort((a,b)=>a.name.localeCompare(b.name));
     moveListCont.classList.remove('hidden'); tgtCont.classList.remove('hidden');
-    if(inClass.length === 0) { moveListCont.innerHTML = '<p class="text-sm italic text-gray-500">ഈ ക്ലാസ്സിൽ കുട്ടികൾ ഇല്ല.</p>'; return; }
+    if(inClass.length === 0) { moveListCont.innerHTML = '<p class="text-sm italic text-gray-500">No students found in this class.</p>'; return; }
     let h = `<div class="mb-3 pb-3 border-b border-gray-200"><input type="checkbox" id="move-all" class="mr-2 w-4 h-4 rounded"><label for="move-all" class="font-bold text-gray-800">Select All Students</label></div>`;
     inClass.forEach(s => h += `<div class="flex items-center mb-2"><input type="checkbox" class="move-chk mr-3 w-4 h-4 rounded" value="${s.id}" id="m-${s.id}"><label for="m-${s.id}" class="text-sm font-medium text-gray-700">${s.name} <span class="text-xs text-gray-400 font-mono ml-2">(Adm: ${s.adm||'-'})</span></label></div>`);
     moveListCont.innerHTML = h;
@@ -2198,7 +2215,7 @@ moveBtn.addEventListener('click', async () => {
     const targetClass = isNew ? document.getElementById('move-target-inp').value.trim().toUpperCase() : document.getElementById('move-target-sel').value;
 
     if(!targetClass) return alert("Please specify target class.");
-    if(!confirm(`ഈ ${ids.length} വിദ്യാർത്ഥികളെ ${targetClass} എന്ന ക്ലാസ്സിലേക്ക് മാറ്റട്ടെ?`)) return;
+    if(!confirm(`Move these ${ids.length} students to class ${targetClass}?`)) return;
 
     const batch = writeBatch(db); ids.forEach((id) => {
         batch.update(doc(db, `${BASE_PATH}/students`, id), { class: targetClass });
@@ -2212,7 +2229,7 @@ moveBtn.addEventListener('click', async () => {
     await batch.commit();
     await syncActiveAcademicYearClasses([targetClass]);
     await logAuditEvent({ category: 'class', action: 'student.move', entityType: 'student', message: `Moved ${ids.length} students to ${targetClass}.`, metadata: { targetClass, ids } });
-    alert('മാറ്റം വിജയകരം.'); document.getElementById('move-from-class').value = ''; moveListCont.classList.add('hidden'); tgtCont.classList.add('hidden');
+    alert('Students moved successfully.'); document.getElementById('move-from-class').value = ''; moveListCont.classList.add('hidden'); tgtCont.classList.add('hidden');
 });
 
 // --- 5. GROUPS ---
@@ -3390,7 +3407,7 @@ const renderConcessionsList = () => {
 
     const fil = students.filter(s => { let match = true; if(fCls) match = match && s.class === fCls; if(sTerm) match = match && (s.name.toLowerCase().includes(sTerm) || (s.adm && s.adm.toLowerCase().includes(sTerm))); return match; });
 
-    if(fil.length === 0) { cont.innerHTML = '<p class="text-gray-500 p-2">കുട്ടികളെ കണ്ടെത്താനായില്ല.</p>'; return; }
+    if(fil.length === 0) { cont.innerHTML = '<p class="text-gray-500 p-2">No students found.</p>'; return; }
     cont.innerHTML = fil.map(s => `<div class="flex justify-between items-center p-3 bg-white border border-gray-100 rounded-lg shadow-sm gap-2"><div class="font-medium text-gray-800">${escapeHtml(s.name || '-')} <span class="text-xs text-gray-500 ml-2">${escapeHtml(s.class || '--')} (Adm: ${escapeHtml(s.adm||'-')})</span></div><div class="flex gap-2 shrink-0"><button class="bg-blue-50 text-blue-700 font-bold px-3 py-1.5 rounded-lg text-sm transition hover:shadow-md concession-open-btn" data-id="${s.id}">${s.concessionFee!==undefined?'Edit':'Set Concession'}</button>${s.concessionFee!==undefined?`<button class="bg-red-50 text-red-700 font-bold px-3 py-1.5 rounded-lg text-sm transition hover:shadow-md concession-delete-btn" data-id="${s.id}">Delete</button>`:''}</div></div>`).join('');
 };
 document.getElementById('filter-conc-class').addEventListener('change', renderConcessionsList);
