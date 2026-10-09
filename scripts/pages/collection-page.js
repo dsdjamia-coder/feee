@@ -1033,7 +1033,7 @@ document.getElementById('save-my-class-btn')?.addEventListener('click', async ()
         }
     } catch (error) {
         console.error('Failed to save My Class Duty details', error);
-        alert('സേവ് ചെയ്യുന്നതിൽ എറർ സംഭവിച്ചു. ഇന്റർനെറ്റ് കണക്ഷൻ പരിശോധിക്കുക.');
+        alert('Error saving. Please check your internet connection.');
     } finally {
         const btn = document.getElementById('save-my-class-btn');
         btn.innerHTML = `<i class="fas fa-save mr-2"></i> Save Details`;
@@ -1270,17 +1270,17 @@ const renderGroupedStudentsPanel = () => {
         const singleStu = activeMembers[0] || getStudentById(selectedStudentId);
         statusHtml = `<div class="mt-2 text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg p-2 font-medium flex items-center gap-2">
             <i class="fas fa-user-check text-blue-600 text-sm"></i>
-            <span><b>${escapeHtml(singleStu?.name || 'ഈ കുട്ടി')}</b>ക്ക് മാത്രമായി ഫീസ് രേഖപ്പെടുത്തുന്നു (ഗ്രൂപ്പിലെ മറ്റുള്ളവർക്ക് ബാധകമാകില്ല).</span>
+            <span><b>${escapeHtml(singleStu?.name || 'this student')}</b> only.</span>
         </div>`;
     } else if (isAllSelected) {
         statusHtml = `<div class="mt-2 text-xs text-emerald-800 bg-emerald-100 border border-emerald-300 rounded-lg p-2 font-medium flex items-center gap-2">
             <i class="fas fa-check-double text-emerald-600 text-sm"></i>
-            <span>ഗ്രൂപ്പിലെ മുഴുവൻ (${members.length}) കുട്ടികൾക്കും ഫീസ് തുല്യമായി ഒരുമിച്ച് രേഖപ്പെടുത്തുന്നു.</span>
+            <span>Record fees for all (${members.length}) students in the group equally.</span>
         </div>`;
     } else {
         statusHtml = `<div class="mt-2 text-xs text-indigo-800 bg-indigo-50 border border-indigo-200 rounded-lg p-2 font-medium flex items-center gap-2">
             <i class="fas fa-users-viewfinder text-indigo-600 text-sm"></i>
-            <span>തിരഞ്ഞെടുത്ത ${activeCount} കുട്ടികൾക്ക് മാത്രമായി ഫീസ് രേഖപ്പെടുത്തുന്നു.</span>
+            <span>Record fees for only the selected ${activeCount} students.</span>
         </div>`;
     }
 
@@ -1289,18 +1289,18 @@ const renderGroupedStudentsPanel = () => {
             <i class="fas fa-users text-emerald-600 mt-1"></i>
             <div class="flex-1">
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-                    <div class="font-bold text-emerald-900">Grouped fee collection (കുടുംബം / ഗ്രൂപ്പ്)</div>
+                    <div class="font-bold text-emerald-900">Grouped fee collection (Family / Group)</div>
                     <div class="flex items-center gap-1.5">
-                        <button type="button" id="grp-select-all-btn" class="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-200 hover:bg-emerald-300 text-emerald-900 transition">എല്ലാവരും (All)</button>
-                        <button type="button" id="grp-select-only-btn" class="text-[11px] font-bold px-2 py-0.5 rounded bg-white hover:bg-gray-100 border border-emerald-300 text-emerald-900 transition">ഈ കുട്ടി മാത്രം (Only)</button>
+                        <button type="button" id="grp-select-all-btn" class="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-200 hover:bg-emerald-300 text-emerald-900 transition">Everyone (All)</button>
+                        <button type="button" id="grp-select-only-btn" class="text-[11px] font-bold px-2 py-0.5 rounded bg-white hover:bg-gray-100 border border-emerald-300 text-emerald-900 transition">This student only (Only)</button>
                     </div>
                 </div>
-                <div class="text-[11px] text-emerald-700 mb-2">ഒരാൾ മാത്രം ഫീസ് തരുമ്പോൾ മറ്റുള്ളവരെ ഒഴിവാക്കാം:</div>
+                <div class="text-[11px] text-emerald-700 mb-2">Exclude others when only one person pays:</div>
                 <ol class="space-y-1.5 text-xs">${memberRows}</ol>
                 ${statusHtml}
                 <div class="mt-2 grid grid-cols-2 gap-2 text-[11px] font-bold">
-                    <span class="bg-white border border-emerald-200 rounded-lg px-2 py-1.5 text-center">പ്രതിമാസ ഫീസ്: ₹${effectiveFee.toFixed(0)}</span>
-                    <span class="bg-white border border-emerald-200 rounded-lg px-2 py-1.5 text-center">ആകെ തുക: ₹${groupTotal.toFixed(0)}</span>
+                    <span class="bg-white border border-emerald-200 rounded-lg px-2 py-1.5 text-center">Monthly Fee: ₹${effectiveFee.toFixed(0)}</span>
+                    <span class="bg-white border border-emerald-200 rounded-lg px-2 py-1.5 text-center">Total Amount: ₹${groupTotal.toFixed(0)}</span>
                 </div>
             </div>
         </div>`;
@@ -1348,9 +1348,9 @@ const syncGroupedStudentsForSelectedStudent = () => {
 
 const addCurrentStudentToMultiQueue = () => {
     if (!isMultiEntryMode()) return;
-    if (!selectedStudentId) return alert('ദയവായി ഒരു വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക.');
+    if (!selectedStudentId) return alert('Please select a student.');
     const selected = buildSelectedItemsForCurrentStudent();
-    if (!selected.length) return alert('ദയവായി ഫീസ് ഐറ്റം തിരഞ്ഞെടുക്കുക.');
+    if (!selected.length) return alert('Please select a fee item.');
     const st = getStudentById(selectedStudentId);
     const visibleTotal = parseFloat(document.getElementById('total-amount').value || 0);
     const calculatedTotal = calculateEntryTotalForStudent(selected, selectedStudentId);
@@ -1889,7 +1889,7 @@ const startEditingPayment = (studentId, txnId) => {
 
 const processPaymentSubmit = async (isUpdate) => {
     if (isPaymentMutationInFlight) return;
-    if(!selectedStudentId && !multiEntryQueue.length) return alert("ദയവായി ഒരു വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുക്കുക.");
+    if(!selectedStudentId && !multiEntryQueue.length) return alert("Please select a student.");
     captureCurrentYearFeeSelections();
     const selected = buildSelectedItemsForCurrentStudent();
     const selectedGroup = selectedStudentId ? getStudentBillingGroup(selectedStudentId) : null;
@@ -1910,13 +1910,13 @@ const processPaymentSubmit = async (isUpdate) => {
         targetGroupMemberIds: isSingleMemberOnly ? [selectedStudentId] : activeMembers
     } : null;
     const allEntries = isMultiEntryMode() ? [...multiEntryQueue, primaryEntry].filter(Boolean) : [primaryEntry].filter(Boolean);
-    if(allEntries.length === 0 || allEntries.every((entry) => !entry.items.length)) return alert("ദയവായി ഫീസ് ഐറ്റം തിരഞ്ഞെടുക്കുക.");
+    if(allEntries.length === 0 || allEntries.every((entry) => !entry.items.length)) return alert("Please select a fee item.");
 
     const rcptStr = document.getElementById('entry-receipt').value.trim();
     const rcpt = rcptStr ? parseInt(rcptStr) : null;
 
     const isReq = checkReceiptMandatory();
-    if(isReq && !rcpt) return alert("തിരഞ്ഞെടുത്ത ഫീസിന് രസീത് നമ്പർ നിർബന്ധമാണ്.");
+    if(isReq && !rcpt) return alert("Receipt number is mandatory for the selected fee.");
 
     if(rcpt) {
         const isDup = allPayments.some((payment) => {
@@ -1924,7 +1924,7 @@ const processPaymentSubmit = async (isUpdate) => {
             if (!isUpdate) return true;
             return getPaymentGroupKey(payment) !== editingPaymentGroup.txnId;
         });
-        if(isDup) return alert(`രസീത് നമ്പർ ${rcpt} ഉപയോഗിച്ചിട്ടുണ്ട്. ദയവായി വേറൊരു നമ്പർ നൽകുക.`);
+        if(isDup) return alert(`Receipt number ${rcpt} is already used. Please provide a different number.`);
     }
 
     const dt = document.getElementById('entry-date').value;
@@ -1936,7 +1936,7 @@ const processPaymentSubmit = async (isUpdate) => {
     });
     const effectiveTotal = [...uniqueTotals.values()].reduce((sum, amount) => sum + amount, 0);
     const tot = isMultiEntryMode() ? effectiveTotal : resolvedTotal;
-    if(!dt || isNaN(tot)) return alert("തിയ്യതിയും തുകയും പരിശോധിക്കുക.");
+    if(!dt || isNaN(tot)) return alert("Please check the date and amount.");
 
     const confirmBtn = document.getElementById('confirm-ok');
     document.getElementById('confirm-title').textContent = isUpdate ? 'Update Payment' : 'Confirm Payment';
@@ -1945,18 +1945,18 @@ const processPaymentSubmit = async (isUpdate) => {
     titleLine.className = 'font-medium text-gray-800';
     let confirmTitleText = '';
     if (isUpdate) {
-        confirmTitleText = 'മാറ്റങ്ങൾ സേവ് ചെയ്യട്ടെ?';
+        confirmTitleText = 'Save changes?';
     } else if (isMultiEntryMode()) {
-        confirmTitleText = `${allEntries.length} വിദ്യാർത്ഥികളുടെ ഫീസ് ഒരേ രസീതിൽ സേവ് ചെയ്യട്ടെ?`;
+        confirmTitleText = `${allEntries.length} students' fees to be saved in the same receipt?`;
     } else if (!isSingleMemberOnly && activeMembers.length > 1) {
-        confirmTitleText = `ഗ്രൂപ്പിലെ ${activeMembers.length} കുട്ടികൾക്ക് ഒരുമിച്ച് ഫീസ് സേവ് ചെയ്യട്ടെ?`;
+        confirmTitleText = `Save fees for ${activeMembers.length} members in the group together?`;
     } else {
-        confirmTitleText = `${getStudentById(selectedStudentId)?.name || 'വിദ്യാർത്ഥി'} ന്റെ ഫീസ് സേവ് ചെയ്യട്ടെ?`;
+        confirmTitleText = `Save fees for ${getStudentById(selectedStudentId)?.name || 'student'}?`;
     }
     titleLine.textContent = confirmTitleText;
     const amountLine = document.createElement('p');
     amountLine.className = 'mt-2 text-sm text-gray-500 font-mono';
-    amountLine.textContent = `ആകെ തുക: ₹${tot}`;
+    amountLine.textContent = `Total Amount: ₹${tot}`;
     const detailsWrap = document.createElement('div');
     detailsWrap.className = 'mt-2 text-xs text-slate-600 space-y-1 max-h-40 overflow-y-auto';
     const finalEntries = allEntries.filter((entry) => (entry.items || []).length);
