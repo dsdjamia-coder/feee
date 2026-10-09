@@ -144,26 +144,11 @@ const activateTab = (targetId, { updateHash = true } = {}) => {
         page.classList.toggle('hidden', page.id !== safeTargetId);
     });
 
-    // Expand main container to full-width when Fee Management (React) is active
     const mainApp = document.getElementById('app');
     if (mainApp) {
-        if (safeTargetId === 'fee-manager-page') {
-            mainApp.style.maxWidth = '100%';
-            mainApp.style.width = '100%';
-            mainApp.style.padding = '10px';
-            const feeIframe = document.querySelector('#fee-manager-page iframe');
-            if (feeIframe && currentWorkingAcademicYear) {
-                const currentSrc = feeIframe.getAttribute('src') || '';
-                const encodedYear = encodeURIComponent(currentWorkingAcademicYear);
-                if (!currentSrc.includes(`academicYear=${encodedYear}`)) {
-                    feeIframe.src = `student-fee-system.html?view=STUDENTS&role=cashier&academicYear=${encodedYear}`;
-                }
-            }
-        } else {
-            mainApp.style.maxWidth = '';
-            mainApp.style.width = '';
-            mainApp.style.padding = '';
-        }
+        mainApp.style.maxWidth = '';
+        mainApp.style.width = '';
+        mainApp.style.padding = '';
     }
 
     if (updateHash) {
