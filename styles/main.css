@@ -1107,17 +1107,12 @@ body.student-shell main {
     min-height: calc(100dvh - var(--header-height) - 40px);
 }
 body.student-shell #home-page {
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
+    display: block;
+    width: 100%;
 }
-body.student-shell #home-page > .id-card {
-    width: min(100%, 420px);
-    height: auto;
-    max-height: none;
+body.student-shell #home-page > div {
+    width: 100%;
     margin: 0 auto;
-    padding: 0;
-    overflow: visible;
 }
 body.student-shell #home-page > .id-card .id-value {
     overflow-wrap: anywhere;

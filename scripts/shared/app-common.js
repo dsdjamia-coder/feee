@@ -20,6 +20,14 @@ export const sanitizeUrl = (value = '', allowedProtocols = ['https:', 'http:', '
         return '';
     }
 };
+export const resolveSafePhotoUrl = (value = '', fallback = '') => {
+    if (!value || typeof value !== 'string') return fallback;
+    const clean = value.trim();
+    if (!clean) return fallback;
+    if (clean.startsWith('data:image/') || clean.startsWith('data:')) return clean;
+    const sanitized = sanitizeUrl(clean, ['https:', 'http:', 'data:']);
+    return sanitized || fallback;
+};
 export const formatDateDisplay = (value, locale = 'en-GB') => {
     if (!value) return '--';
     const date = new Date(value);

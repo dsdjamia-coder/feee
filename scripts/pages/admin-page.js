@@ -2,7 +2,7 @@ import { signOut, onAuthStateChanged, EmailAuthProvider, reauthenticateWithCrede
 import { doc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, query, where, writeBatch, getDocs, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { db, auth } from '../../config/firebase-config.js';
 import { ADMIN_AUTH_DOC_ID, SINGLE_ADMIN_MODE, STAFF_ACCESS_COLLECTION } from '../../config/app-config.js';
-import { BASE_PATH, applyCachedInstitutionLogo, enableSmartSelectWindowing, escapeHtml, formatDateDisplay, hardenExternalLinks, registerServiceWorker, rememberInstitutionLogo, renderVersionInfo, sanitizeUrl } from '../shared/app-common.js';
+import { BASE_PATH, applyCachedInstitutionLogo, enableSmartSelectWindowing, escapeHtml, formatDateDisplay, hardenExternalLinks, registerServiceWorker, rememberInstitutionLogo, renderVersionInfo, resolveSafePhotoUrl, sanitizeUrl } from '../shared/app-common.js';
 
 registerServiceWorker();
 hardenExternalLinks();
@@ -1421,7 +1421,7 @@ const renderStaffList = () => {
         return String(a?.name || '').localeCompare(String(b?.name || ''));
     });
     const buildHTML = (list, isAct) => list.map((staffMember) => {
-        const safePhoto = (staffMember.photo && staffMember.photo.startsWith('data:')) ? staffMember.photo : (sanitizeUrl(staffMember.photo) || 'https://via.placeholder.com/60');
+        const safePhoto = resolveSafePhotoUrl(staffMember.photo, 'https://via.placeholder.com/60?text=Staff');
         const typeLabel = getStaffTypeLabel(staffMember.type);
         return `
             <div class="flex flex-col sm:flex-row justify-between p-4 bg-white border border-gray-200 rounded-xl shadow-sm items-start sm:items-center gap-4 transition hover:shadow-md mb-2">
@@ -1773,6 +1773,30 @@ document.getElementById('add-manual-btn').addEventListener('click', async () => 
     document.getElementById('add-stu-status').value = 'Active';
     document.getElementById('add-manual-btn').disabled = false;
 });
+
+const saveStudentPortalPermissions = async () => {
+    if (!requirePermission('students.manage')) return;
+    const photoUploadChecked = document.getElementById('admin-toggle-student-photo-upload')?.checked || false;
+    const detailsEditChecked = document.getElementById('admin-toggle-student-details-edit')?.checked || false;
+    const msg = document.getElementById('student-permissions-status-msg');
+
+    try {
+        await setDoc(doc(db, `${BASE_PATH}/settings`, 'config'), {
+            allowStudentPhotoUpload: photoUploadChecked,
+            allowStudentDetailsEdit: detailsEditChecked
+        }, { merge: true });
+        if (msg) {
+            msg.classList.remove('hidden');
+            setTimeout(() => msg.classList.add('hidden'), 2500);
+        }
+    } catch (err) {
+        console.error('Failed to update student portal permissions:', err);
+        alert('പെർമിഷൻ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല: ' + err.message);
+    }
+};
+
+document.getElementById('admin-toggle-student-photo-upload')?.addEventListener('change', saveStudentPortalPermissions);
+document.getElementById('admin-toggle-student-details-edit')?.addEventListener('change', saveStudentPortalPermissions);
 
 
 // --- 3. MANAGE STUDENTS ---
@@ -4986,6 +5010,11 @@ onAuthStateChanged(auth, async (user) => {
             setValueIfExists('pay-branch', d.paymentBranch || '');
             document.getElementById('default-fee-input').value = d.defaultFee || 200; document.getElementById('fee-status-title-input').value = d.feeStatusTitle || '';
             document.getElementById('default-fee-receipt-req').checked = d.defaultReceiptMandatory || false;
+
+            const photoUploadToggle = document.getElementById('admin-toggle-student-photo-upload');
+            if (photoUploadToggle) photoUploadToggle.checked = d.allowStudentPhotoUpload === true;
+            const detailsEditToggle = document.getElementById('admin-toggle-student-details-edit');
+            if (detailsEditToggle) detailsEditToggle.checked = d.allowStudentDetailsEdit === true;
 
             feeItems = existingItems;
             renderDashboard();

@@ -94,7 +94,7 @@ window.AppSession?.guardStudentPage?.();
                 event.stopPropagation();
                 const rawValue = decodeURIComponent(copyBtn.dataset.copyValue || '');
                 if (!rawValue) return;
-                const originalLabel = copyBtn.textContent;
+                const originalHtml = copyBtn.innerHTML;
                 try {
                     if (navigator.clipboard?.writeText) {
                         await navigator.clipboard.writeText(rawValue);
@@ -106,8 +106,8 @@ window.AppSession?.guardStudentPage?.();
                         document.execCommand('copy');
                         tempInput.remove();
                     }
-                    copyBtn.textContent = 'Copied';
-                    setTimeout(() => { copyBtn.textContent = originalLabel; }, 1200);
+                    copyBtn.innerHTML = '<i class="fas fa-check text-emerald-600"></i>';
+                    setTimeout(() => { copyBtn.innerHTML = originalHtml; }, 1500);
                 } catch (error) {
                     console.warn('Copy failed', error);
                 }
@@ -1437,6 +1437,14 @@ window.AppSession?.guardStudentPage?.();
                     }, { merge: true });
 
                     document.getElementById('dash-avatar').innerHTML = `<img src="${base64}" class="w-full h-full object-cover rounded-full" alt="Profile Photo">`;
+                    const viewerImgEl = document.getElementById('student-photo-viewer-img');
+                    if (viewerImgEl) viewerImgEl.src = base64;
+                    const photoStatusEl = document.getElementById('dash-photo-status');
+                    if (photoStatusEl) photoStatusEl.textContent = 'Uploaded';
+                    if (studentProfile) {
+                        studentProfile.photo = base64;
+                        if (studentProfile.profile) studentProfile.profile.photo = base64;
+                    }
                     alert('പ്രൊഫൈൽ ഫോട്ടോ വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!');
                 } catch (err) {
                     console.error('Failed to save student photo:', err);
@@ -1452,6 +1460,340 @@ window.AppSession?.guardStudentPage?.();
             }
             document.getElementById('student-camera-modal').classList.add('hidden');
             document.getElementById('student-camera-modal').classList.remove('flex');
+        };
+
+        const renderStudentComprehensiveProfile = (st, studentPhotoSubmission = null) => {
+            const prof = st.profile || {};
+            
+            // 1. Photo
+            const userPhoto = st.photo || prof.photo || studentPhotoSubmission?.photo || '';
+            const avatarEl = document.getElementById('dash-avatar');
+            const photoStatusEl = document.getElementById('dash-photo-status');
+            const viewerModal = document.getElementById('student-photo-viewer-modal');
+            const viewerImg = document.getElementById('student-photo-viewer-img');
+
+            if (userPhoto) {
+                if (avatarEl) avatarEl.innerHTML = `<img src="${userPhoto}" class="w-full h-full object-cover rounded-full" alt="Profile Photo">`;
+                if (photoStatusEl) photoStatusEl.textContent = 'Uploaded';
+                if (viewerImg) viewerImg.src = userPhoto;
+            } else {
+                if (avatarEl) {
+                    avatarEl.innerHTML = st.name ? `<span class="text-3xl font-extrabold text-blue-600">${escapeHtml(st.name.charAt(0).toUpperCase())}</span>` : `<i class="fas fa-user text-3xl text-slate-400"></i>`;
+                }
+                if (photoStatusEl) photoStatusEl.textContent = 'Not uploaded';
+            }
+
+            // Photo viewer / Lightbox logic
+            const openPhotoViewer = () => {
+                if (!userPhoto) {
+                    const photoControls = document.getElementById('student-photo-controls');
+                    if (photoControls && !photoControls.classList.contains('hidden')) {
+                        document.getElementById('student-photo-file-input')?.click();
+                    }
+                    return;
+                }
+                if (viewerModal && viewerImg) {
+                    viewerImg.src = userPhoto;
+                    viewerModal.classList.remove('hidden');
+                    viewerModal.classList.add('flex');
+                }
+            };
+
+            const viewBtn = document.getElementById('student-view-photo-btn');
+            if (viewBtn && !viewBtn.dataset.bound) {
+                viewBtn.dataset.bound = 'true';
+                viewBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openPhotoViewer();
+                });
+            }
+
+            if (avatarEl && !avatarEl.dataset.bound) {
+                avatarEl.dataset.bound = 'true';
+                avatarEl.addEventListener('click', () => {
+                    const photoControls = document.getElementById('student-photo-controls');
+                    if (photoControls && !photoControls.classList.contains('hidden') && !userPhoto) {
+                        document.getElementById('student-photo-file-input')?.click();
+                    } else {
+                        openPhotoViewer();
+                    }
+                });
+            }
+
+            const viewerCloseBtn = document.getElementById('student-photo-viewer-close-btn');
+            if (viewerCloseBtn && !viewerCloseBtn.dataset.bound) {
+                viewerCloseBtn.dataset.bound = 'true';
+                viewerCloseBtn.addEventListener('click', () => {
+                    viewerModal?.classList.add('hidden');
+                    viewerModal?.classList.remove('flex');
+                });
+            }
+
+            if (viewerModal && !viewerModal.dataset.bound) {
+                viewerModal.dataset.bound = 'true';
+                viewerModal.addEventListener('click', (e) => {
+                    if (e.target === viewerModal) {
+                        viewerModal.classList.add('hidden');
+                        viewerModal.classList.remove('flex');
+                    }
+                });
+            }
+
+            // 2. Class
+            const classVal = st.class || st.studentClass || prof.class || prof.studentClass || '-';
+            const classEl = document.getElementById('dash-class');
+            if (classEl) classEl.textContent = `Class: ${classVal}`;
+            const classValEl = document.getElementById('dash-class-val');
+            if (classValEl) classValEl.textContent = classVal;
+
+            // 3. ID / UID
+            const uidVal = st.uid || prof.uid || st.id || prof.id || '-';
+            const uidEl = document.getElementById('dash-uid');
+            if (uidEl) uidEl.textContent = uidVal;
+            const uidValEl = document.getElementById('dash-uid-val');
+            if (uidValEl) uidValEl.textContent = uidVal;
+
+            // 4. Student Name
+            const nameVal = st.name || prof.name || '-';
+            const nameEl = document.getElementById('dash-name');
+            if (nameEl) nameEl.textContent = nameVal;
+            const nameValEl = document.getElementById('dash-name-val');
+            if (nameValEl) nameValEl.textContent = nameVal;
+
+            // 5. Father's Name
+            const fatherVal = st.father || prof.father || '-';
+            const fatherEl = document.getElementById('dash-father');
+            if (fatherEl) fatherEl.textContent = fatherVal;
+
+            // 6. Mother's Name
+            const motherVal = st.mother || prof.mother || '-';
+            const motherEl = document.getElementById('dash-mother');
+            if (motherEl) motherEl.textContent = motherVal;
+
+            // 7. Gender
+            const genderVal = st.gender || prof.gender || '-';
+            const genderEl = document.getElementById('dash-gender');
+            if (genderEl) genderEl.textContent = genderVal;
+            const genderValEl = document.getElementById('dash-gender-val');
+            if (genderValEl) genderValEl.textContent = genderVal;
+            const genderBadge = document.getElementById('dash-gender-badge');
+            if (genderBadge) {
+                const isFemale = String(genderVal).toLowerCase().startsWith('f');
+                genderBadge.innerHTML = `<i class="fas fa-${isFemale ? 'venus' : 'mars'}"></i> <span id="dash-gender">${escapeHtml(genderVal)}</span>`;
+            }
+
+            // 8. Admission Number (Adm. No.)
+            const admVal = st.adm || prof.admNo || prof.adm || st.admissionNo || prof.admissionNo || '-';
+            const admEl = document.getElementById('dash-adm');
+            if (admEl) admEl.textContent = admVal;
+            const admValEl = document.getElementById('dash-adm-val');
+            if (admValEl) admValEl.textContent = admVal;
+
+            // 9. Date of Birth
+            const rawDob = st.dob || prof.dob || '';
+            const dobVal = rawDob ? formatDateDisplay(rawDob) : '-';
+            const dobEl = document.getElementById('dash-dob');
+            if (dobEl) dobEl.textContent = dobVal;
+
+            // 10. Date of Admission
+            const rawAdmDate = st.admDate || prof.admDate || '';
+            const admDateVal = rawAdmDate ? formatDateDisplay(rawAdmDate) : '-';
+            const admDateEl = document.getElementById('dash-adm-date');
+            if (admDateEl) admDateEl.textContent = admDateVal;
+
+            // 11. Student Status
+            const statusVal = st.status || prof.status || 'Active';
+            const statusEl = document.getElementById('dash-status');
+            if (statusEl) statusEl.textContent = statusVal;
+            const statusValEl = document.getElementById('dash-status-val');
+            if (statusValEl) statusValEl.textContent = statusVal;
+            const statusBadge = document.getElementById('dash-status-badge');
+            if (statusBadge) {
+                const isInactive = /inactive|tc|leaving|discontinued|cancelled/i.test(String(statusVal));
+                if (isInactive) {
+                    statusBadge.className = 'bg-rose-100/80 text-rose-800 text-xs font-bold px-3 py-1 rounded-full border border-rose-200 flex items-center gap-1.5';
+                    statusBadge.innerHTML = `<i class="fas fa-times-circle"></i> <span id="dash-status">${escapeHtml(statusVal)}</span>`;
+                } else {
+                    statusBadge.className = 'bg-emerald-100/80 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5';
+                    statusBadge.innerHTML = `<i class="fas fa-check-circle"></i> <span id="dash-status">${escapeHtml(statusVal)}</span>`;
+                }
+            }
+
+            // 12. Aadhaar Number
+            const adhaarVal = st.adhaar || prof.adhaar || st.aadhaar || prof.aadhaar || '-';
+            const adhaarEl = document.getElementById('dash-adhaar');
+            if (adhaarEl) adhaarEl.textContent = adhaarVal;
+
+            // 13. Father's Phone Number
+            const mobileVal = st.mobile || prof.mobile || st.phone || prof.phone || '';
+            const mobileEl = document.getElementById('dash-mobile');
+            if (mobileEl) mobileEl.textContent = mobileVal || '-';
+            const mobileLinkEl = document.getElementById('dash-mobile-link');
+            if (mobileLinkEl) {
+                if (mobileVal) {
+                    mobileLinkEl.href = `tel:${mobileVal}`;
+                    mobileLinkEl.classList.remove('pointer-events-none');
+                } else {
+                    mobileLinkEl.removeAttribute('href');
+                    mobileLinkEl.classList.add('pointer-events-none');
+                }
+            }
+            const mobileCopyEl = document.getElementById('dash-mobile-copy');
+            if (mobileCopyEl) mobileCopyEl.dataset.copyValue = encodeURIComponent(mobileVal);
+
+            // 14. Mother's Phone Number
+            const motherMobileVal = st.motherMobile || prof.motherMobile || '';
+            const motherMobileEl = document.getElementById('dash-mother-mobile');
+            if (motherMobileEl) motherMobileEl.textContent = motherMobileVal || '-';
+            const motherMobileLinkEl = document.getElementById('dash-mother-mobile-link');
+            if (motherMobileLinkEl) {
+                if (motherMobileVal) {
+                    motherMobileLinkEl.href = `tel:${motherMobileVal}`;
+                    motherMobileLinkEl.classList.remove('pointer-events-none');
+                } else {
+                    motherMobileLinkEl.removeAttribute('href');
+                    motherMobileLinkEl.classList.add('pointer-events-none');
+                }
+            }
+            const motherMobileCopyEl = document.getElementById('dash-mother-mobile-copy');
+            if (motherMobileCopyEl) motherMobileCopyEl.dataset.copyValue = encodeURIComponent(motherMobileVal);
+
+            // 15. Permanent Address
+            const addrVal = st.address || prof.address || '-';
+            const addrEl = document.getElementById('dash-addr');
+            if (addrEl) addrEl.textContent = addrVal;
+
+            // Concession if any
+            const concGroup = document.getElementById('dash-conc-group');
+            const concEl = document.getElementById('dash-conc');
+            if (st.concessionFee !== undefined && st.concessionFee !== null && st.concessionFee !== "") {
+                if (concGroup) {
+                    concGroup.classList.remove('hidden');
+                    concGroup.classList.add('flex');
+                }
+                if (concEl) concEl.textContent = formatCurrency(st.concessionFee);
+            } else {
+                if (concGroup) {
+                    concGroup.classList.add('hidden');
+                    concGroup.classList.remove('flex');
+                }
+            }
+        };
+
+        const setupStudentEditDetailsActions = (studentId, currentSt) => {
+            const editBtn = document.getElementById('student-edit-details-btn');
+            const modal = document.getElementById('student-edit-details-modal');
+            const closeBtn = document.getElementById('student-edit-details-close-btn');
+            const cancelBtn = document.getElementById('student-edit-details-cancel-btn');
+            const saveBtn = document.getElementById('student-edit-details-save-btn');
+
+            if (!editBtn || !modal || editBtn.dataset.bound === 'true') return;
+            editBtn.dataset.bound = 'true';
+
+            const closeModal = () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            };
+
+            editBtn.addEventListener('click', () => {
+                const prof = currentSt.profile || {};
+                const nameInput = document.getElementById('st-edit-name');
+                const genderInput = document.getElementById('st-edit-gender');
+                const dobInput = document.getElementById('st-edit-dob');
+                const adhaarInput = document.getElementById('st-edit-adhaar');
+                const fatherInput = document.getElementById('st-edit-father');
+                const motherInput = document.getElementById('st-edit-mother');
+                const fatherPhoneInput = document.getElementById('st-edit-father-phone');
+                const motherPhoneInput = document.getElementById('st-edit-mother-phone');
+                const addressInput = document.getElementById('st-edit-address');
+
+                if (nameInput) nameInput.value = currentSt.name || prof.name || '';
+                if (genderInput) genderInput.value = currentSt.gender || prof.gender || 'Male';
+                if (dobInput) dobInput.value = currentSt.dob || prof.dob || '';
+                if (adhaarInput) adhaarInput.value = currentSt.adhaar || prof.adhaar || currentSt.aadhaar || prof.aadhaar || '';
+                if (fatherInput) fatherInput.value = currentSt.father || prof.father || '';
+                if (motherInput) motherInput.value = currentSt.mother || prof.mother || '';
+                if (fatherPhoneInput) fatherPhoneInput.value = currentSt.mobile || prof.mobile || currentSt.phone || prof.phone || '';
+                if (motherPhoneInput) motherPhoneInput.value = currentSt.motherMobile || prof.motherMobile || '';
+                if (addressInput) addressInput.value = currentSt.address || prof.address || '';
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            });
+
+            closeBtn?.addEventListener('click', closeModal);
+            cancelBtn?.addEventListener('click', closeModal);
+
+            saveBtn?.addEventListener('click', async () => {
+                const newName = document.getElementById('st-edit-name')?.value.trim();
+                const newGender = document.getElementById('st-edit-gender')?.value || 'Male';
+                const newDob = document.getElementById('st-edit-dob')?.value || '';
+                const newAdhaar = document.getElementById('st-edit-adhaar')?.value.trim() || '';
+                const newFather = document.getElementById('st-edit-father')?.value.trim();
+                const newMother = document.getElementById('st-edit-mother')?.value.trim();
+                const newFatherPhone = document.getElementById('st-edit-father-phone')?.value.trim();
+                const newMotherPhone = document.getElementById('st-edit-mother-phone')?.value.trim();
+                const newAddress = document.getElementById('st-edit-address')?.value.trim();
+
+                if (!newName) {
+                    alert('Student name is required!');
+                    return;
+                }
+
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+
+                try {
+                    const studentRef = doc(db, `${BASE_PATH}/students`, studentId);
+                    const currentProfile = currentSt.profile || {};
+                    const updatedProfile = {
+                        ...currentProfile,
+                        name: newName,
+                        gender: newGender,
+                        dob: newDob,
+                        adhaar: newAdhaar,
+                        father: newFather,
+                        mother: newMother,
+                        mobile: newFatherPhone,
+                        motherMobile: newMotherPhone,
+                        address: newAddress
+                    };
+
+                    await setDoc(studentRef, {
+                        name: newName,
+                        gender: newGender,
+                        dob: newDob,
+                        adhaar: newAdhaar,
+                        father: newFather,
+                        mother: newMother,
+                        mobile: newFatherPhone,
+                        motherMobile: newMotherPhone,
+                        address: newAddress,
+                        profile: updatedProfile
+                    }, { merge: true });
+
+                    currentSt.name = newName;
+                    currentSt.gender = newGender;
+                    currentSt.dob = newDob;
+                    currentSt.adhaar = newAdhaar;
+                    currentSt.father = newFather;
+                    currentSt.mother = newMother;
+                    currentSt.mobile = newFatherPhone;
+                    currentSt.motherMobile = newMotherPhone;
+                    currentSt.address = newAddress;
+                    currentSt.profile = updatedProfile;
+
+                    renderStudentComprehensiveProfile(currentSt);
+                    closeModal();
+                    alert('വിദ്യാർത്ഥിയുടെ വിവരങ്ങൾ വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!');
+                } catch (err) {
+                    console.error('Failed to update student profile:', err);
+                    alert('അപ്‌ഡേറ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല: ' + err.message);
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save Changes';
+                }
+            });
         };
 
         const saveStudentPhotoSubmission = async () => {};
@@ -1857,29 +2199,10 @@ window.AppSession?.guardStudentPage?.();
                 allStaff = getSettledDocs(staffSnap, 'staff payment collectors').map((d) => d.data());
                 const studentResults = getSettledDocs(resultsSnap, 'student results').map((d) => ({ id: d.id, ...d.data() })).filter((item) => item.published !== false);
                 
-                document.getElementById('dash-name').textContent = st.name;
-                document.getElementById('dash-class').textContent = `Class: ${st.class || '-'}`;
-                document.getElementById('dash-adm').textContent = st.adm || '-';
-                document.getElementById('dash-uid').textContent = st.uid || '-';
-                document.getElementById('dash-gender').textContent = st.gender || '-';
-                document.getElementById('dash-father').textContent = st.father || '-';
-                document.getElementById('dash-mother').textContent = st.mother || st.profile?.mother || '-';
-                document.getElementById('dash-mobile').textContent = st.mobile || '-';
-                document.getElementById('dash-mother-mobile').textContent = st.motherMobile || st.profile?.motherMobile || '-';
-                document.getElementById('dash-dob').textContent = (st.profile?.dob ? formatDateDisplay(st.profile.dob) : '-');
-                document.getElementById('dash-adm-date').textContent = (st.profile?.admDate ? formatDateDisplay(st.profile.admDate) : '-');
-                document.getElementById('dash-adhaar').textContent = st.profile?.adhaar || '-';
-                document.getElementById('dash-status').textContent = st.status || st.profile?.status || 'Active';
-                document.getElementById('dash-addr').textContent = st.address || '-';
+                renderStudentComprehensiveProfile(st, studentPhotoSubmission);
                 renderProfilePaymentDetails();
-                
-                const userPhoto = st.photo || st.profile?.photo || studentPhotoSubmission?.photo || '';
-                if (userPhoto) {
-                    document.getElementById('dash-avatar').innerHTML = `<img src="${userPhoto}" class="w-full h-full object-cover rounded-full" alt="Profile Photo">`;
-                } else if (st.name) {
-                    document.getElementById('dash-avatar').textContent = st.name.charAt(0).toUpperCase();
-                }
                 setupStudentPhotoActions();
+                setupStudentEditDetailsActions(studentId, st);
                 try {
                     const paySnap = await getDocs(query(collection(db, `${BASE_PATH}/payments`), where('studentId', '==', studentId)));
                     allPayments = paySnap.docs.map(d=>d.data());
