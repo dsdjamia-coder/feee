@@ -555,6 +555,7 @@ window.AppSession?.guardStudentPage?.();
         let feeItems = [], allPayments = [], studentGroups = [], allStaff = [];
         let groupMemberProfileMap = {};
         let defaultFee = 200;
+        let studentPortalPerms = { allowPhotoUpload: false, allowDetailsEdit: false };
         let paymentDetails = {};
         let resultSchemas = [];
         let resultCenterSettings = { locked: false, blockedClasses: [] };
@@ -1523,6 +1524,15 @@ window.AppSession?.guardStudentPage?.();
             const classVal = st.class || st.studentClass || prof.class || prof.studentClass || '-';
             const classEl = document.getElementById('dash-class');
             if (classEl) classEl.textContent = `Class: ${classVal}`;
+            const classValEl = document.getElementById('dash-class-val');
+            if (classValEl) classValEl.textContent = classVal;
+
+            // Academic Year (Shown in Profile Header)
+            const acadYear = currentAcademicYear || st.academicYear || prof.academicYear || selectedFeeAcademicYear || '';
+            const acadYearEl = document.getElementById('dash-academic-year');
+            if (acadYearEl) {
+                acadYearEl.textContent = acadYear ? `Academic Year: ${acadYear}` : 'Academic Year: Current';
+            }
 
             // ID / UID
             const uidVal = st.uid || prof.uid || st.id || prof.id || '-';
@@ -1530,11 +1540,6 @@ window.AppSession?.guardStudentPage?.();
             if (uidEl) uidEl.textContent = uidVal;
             const uidValEl = document.getElementById('dash-uid-val');
             if (uidValEl) uidValEl.textContent = uidVal;
-
-            // Samastha ID
-            const samasthaVal = prof.samasthaId || st.samasthaId || prof.samastha || st.samastha || '-';
-            const samasthaEl = document.getElementById('dash-samastha-val');
-            if (samasthaEl) samasthaEl.textContent = samasthaVal;
 
             // Student Name
             const nameVal = st.name || prof.name || '-';
@@ -1567,6 +1572,8 @@ window.AppSession?.guardStudentPage?.();
             const admVal = st.adm || prof.admNo || prof.adm || st.admissionNo || prof.admissionNo || '-';
             const admEl = document.getElementById('dash-adm');
             if (admEl) admEl.textContent = admVal;
+            const admValEl = document.getElementById('dash-adm-val');
+            if (admValEl) admValEl.textContent = admVal;
 
             // Date of Birth
             const rawDob = st.dob || prof.dob || '';
@@ -1642,8 +1649,48 @@ window.AppSession?.guardStudentPage?.();
             const addrEl = document.getElementById('dash-addr');
             if (addrEl) addrEl.textContent = addrVal;
 
+            // Apply portal permissions (show/hide edit buttons)
+            applyStudentPortalPermissionsUI();
+
             // RENDER BOTTOM CONCESSION & SIBLING GROUP SECTION
             renderConcessionAndGroupSection(st);
+        };
+
+        const applyStudentPortalPermissionsUI = () => {
+            const photoTopEditBtn = document.getElementById('student-edit-top-btn');
+            if (photoTopEditBtn) {
+                if (studentPortalPerms.allowPhotoUpload) {
+                    photoTopEditBtn.classList.remove('hidden');
+                } else {
+                    photoTopEditBtn.classList.add('hidden');
+                }
+            }
+            const photoControls = document.getElementById('student-photo-controls');
+            if (photoControls) {
+                if (studentPortalPerms.allowPhotoUpload) {
+                    photoControls.classList.remove('hidden');
+                    photoControls.classList.add('flex');
+                } else {
+                    photoControls.classList.add('hidden');
+                    photoControls.classList.remove('flex');
+                }
+            }
+            const fieldEditBtns = document.querySelectorAll('.field-edit-btn');
+            fieldEditBtns.forEach(btn => {
+                if (studentPortalPerms.allowDetailsEdit) {
+                    btn.classList.remove('hidden');
+                } else {
+                    btn.classList.add('hidden');
+                }
+            });
+            const editDetailsBtn = document.getElementById('student-edit-details-btn');
+            if (editDetailsBtn) {
+                if (studentPortalPerms.allowDetailsEdit) {
+                    editDetailsBtn.classList.remove('hidden');
+                } else {
+                    editDetailsBtn.classList.add('hidden');
+                }
+            }
         };
 
         const renderConcessionAndGroupSection = (st) => {
@@ -1756,7 +1803,7 @@ window.AppSession?.guardStudentPage?.();
             }
         };
 
-        // SETUP TOP IDENTITY SECTION EDIT (Photo, Name, Class, Adm No only)
+        // SETUP PHOTO EDIT MODAL (Pencil icon on photo)
         const setupStudentTopIdentityEdit = (studentId, currentSt) => {
             const topEditBtn = document.getElementById('student-edit-top-btn');
             const topModal = document.getElementById('student-edit-top-modal');
@@ -1792,15 +1839,11 @@ window.AppSession?.guardStudentPage?.();
             };
 
             topEditBtn.addEventListener('click', () => {
+                if (!studentPortalPerms.allowPhotoUpload) {
+                    alert('Photo upload is currently disabled by administrator.');
+                    return;
+                }
                 const prof = currentSt.profile || {};
-                const nameInput = document.getElementById('top-edit-name');
-                const classInput = document.getElementById('top-edit-class');
-                const admInput = document.getElementById('top-edit-adm');
-
-                if (nameInput) nameInput.value = currentSt.name || prof.name || '';
-                if (classInput) classInput.value = currentSt.class || currentSt.studentClass || prof.class || '';
-                if (admInput) admInput.value = currentSt.adm || prof.admNo || prof.adm || '';
-
                 updateModalPhotoPreview(currentSt.photo || prof.photo || '');
 
                 topModal.classList.remove('hidden');
@@ -1828,15 +1871,7 @@ window.AppSession?.guardStudentPage?.();
             });
 
             saveBtn?.addEventListener('click', async () => {
-                const newName = (document.getElementById('top-edit-name')?.value || '').trim().toUpperCase();
-                const newClass = (document.getElementById('top-edit-class')?.value || '').trim().toUpperCase();
-                const newAdm = (document.getElementById('top-edit-adm')?.value || '').trim().toUpperCase();
                 const newPhoto = photoValInput?.value || '';
-
-                if (!newName) {
-                    alert('Student name is required!');
-                    return;
-                }
 
                 saveBtn.disabled = true;
                 saveBtn.textContent = 'Saving...';
@@ -1846,52 +1881,36 @@ window.AppSession?.guardStudentPage?.();
                     const currentProf = currentSt.profile || {};
                     const updatedProf = {
                         ...currentProf,
-                        name: newName,
-                        class: newClass,
-                        studentClass: newClass,
-                        admNo: newAdm,
                         photo: newPhoto
                     };
 
-                    const updateData = {
-                        name: newName,
-                        class: newClass,
-                        studentClass: newClass,
-                        adm: newAdm,
+                    await setDoc(studentRef, {
                         photo: newPhoto,
                         profile: updatedProf
-                    };
+                    }, { merge: true });
 
-                    await setDoc(studentRef, updateData, { merge: true });
+                    await setDoc(doc(db, `${BASE_PATH}/studentPhotoSubmissions`, studentId), {
+                        photo: newPhoto,
+                        updatedAt: Date.now()
+                    }, { merge: true });
 
-                    if (newPhoto) {
-                        await setDoc(doc(db, `${BASE_PATH}/studentPhotoSubmissions`, studentId), {
-                            photo: newPhoto,
-                            updatedAt: Date.now()
-                        }, { merge: true });
-                    }
-
-                    currentSt.name = newName;
-                    currentSt.class = newClass;
-                    currentSt.studentClass = newClass;
-                    currentSt.adm = newAdm;
                     currentSt.photo = newPhoto;
                     currentSt.profile = updatedProf;
 
                     renderStudentComprehensiveProfile(currentSt);
                     closeModal();
-                    alert('Profile header details updated successfully!');
+                    alert('Profile photo updated successfully!');
                 } catch (err) {
-                    console.error('Failed to update top identity:', err);
-                    alert('Failed to update details: ' + err.message);
+                    console.error('Failed to update photo:', err);
+                    alert('Failed to update photo: ' + err.message);
                 } finally {
                     saveBtn.disabled = false;
-                    saveBtn.textContent = 'Save Changes';
+                    saveBtn.textContent = 'Save Photo';
                 }
             });
         };
 
-        // SETUP QUICK EDIT FOR INDIVIDUAL FIELDS
+        // SETUP QUICK EDIT FOR INDIVIDUAL PERMITTED FIELDS
         const setupStudentQuickFieldEdit = (studentId, currentSt) => {
             const modal = document.getElementById('student-quick-edit-modal');
             const closeBtn = document.getElementById('student-quick-edit-close-btn');
@@ -1905,6 +1924,8 @@ window.AppSession?.guardStudentPage?.();
 
             let activeField = '';
             let activeLabel = '';
+
+            const ALLOWED_STUDENT_EDIT_FIELDS = ['name', 'father', 'mother', 'gender', 'dob', 'adhaar', 'mobile', 'motherMobile', 'address'];
 
             const closeModal = () => {
                 modal.classList.add('hidden');
@@ -1925,17 +1946,24 @@ window.AppSession?.guardStudentPage?.();
                     const type = btn.dataset.type || 'text';
                     const options = btn.dataset.options || '';
 
+                    if (!studentPortalPerms.allowDetailsEdit) {
+                        alert('Details editing is currently disabled by administrator.');
+                        return;
+                    }
+
+                    if (!ALLOWED_STUDENT_EDIT_FIELDS.includes(field)) {
+                        alert('This field cannot be edited by students.');
+                        return;
+                    }
+
                     activeField = field;
                     activeLabel = label;
 
                     const prof = currentSt.profile || {};
                     let curVal = '';
-                    if (field === 'uid') curVal = currentSt.uid || prof.uid || '';
-                    else if (field === 'samasthaId') curVal = prof.samasthaId || currentSt.samasthaId || '';
+                    if (field === 'name') curVal = currentSt.name || prof.name || '';
                     else if (field === 'dob') curVal = currentSt.dob || prof.dob || '';
-                    else if (field === 'admDate') curVal = currentSt.admDate || prof.admDate || '';
                     else if (field === 'gender') curVal = currentSt.gender || prof.gender || 'Male';
-                    else if (field === 'status') curVal = currentSt.status || prof.status || 'Active';
                     else if (field === 'adhaar') curVal = currentSt.adhaar || prof.adhaar || currentSt.aadhaar || prof.aadhaar || '';
                     else if (field === 'father') curVal = currentSt.father || prof.father || '';
                     else if (field === 'mobile') curVal = currentSt.mobile || prof.mobile || currentSt.phone || prof.phone || '';
@@ -1955,6 +1983,9 @@ window.AppSession?.guardStudentPage?.();
                     } else if (type === 'textarea') {
                         inputContainer.innerHTML = `
                             <textarea id="quick-edit-input" rows="3" class="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">${escapeHtml(curVal)}</textarea>`;
+                    } else if (field === 'name') {
+                        inputContainer.innerHTML = `
+                            <input type="text" id="quick-edit-input" value="${escapeHtml(curVal)}" class="w-full p-2.5 border rounded-lg text-sm uppercase font-semibold bg-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Student Name">`;
                     } else {
                         inputContainer.innerHTML = `
                             <input type="${type}" id="quick-edit-input" value="${escapeHtml(curVal)}" class="w-full p-2.5 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">`;
@@ -1969,7 +2000,15 @@ window.AppSession?.guardStudentPage?.();
             saveBtn?.addEventListener('click', async () => {
                 const inputEl = document.getElementById('quick-edit-input');
                 if (!inputEl) return;
-                const newVal = inputEl.value.trim();
+                let newVal = inputEl.value.trim();
+
+                if (activeField === 'name') {
+                    newVal = newVal.toUpperCase();
+                    if (!newVal) {
+                        alert('Student name is required!');
+                        return;
+                    }
+                }
 
                 saveBtn.disabled = true;
                 saveBtn.textContent = 'Saving...';
@@ -1980,8 +2019,9 @@ window.AppSession?.guardStudentPage?.();
                     const updatedProf = { ...currentProf, [activeField]: newVal };
                     const updateData = { [activeField]: newVal, profile: updatedProf };
 
-                    if (activeField === 'samasthaId') {
-                        updatedProf.samasthaId = newVal;
+                    if (activeField === 'name') {
+                        updateData.name = newVal;
+                        updatedProf.name = newVal;
                     }
                     if (activeField === 'adhaar') {
                         updateData.aadhaar = newVal;
@@ -1998,6 +2038,7 @@ window.AppSession?.guardStudentPage?.();
 
                     currentSt[activeField] = newVal;
                     currentSt.profile = updatedProf;
+                    if (activeField === 'name') currentSt.name = newVal;
                     if (activeField === 'adhaar') currentSt.aadhaar = newVal;
                     if (activeField === 'mobile') currentSt.phone = newVal;
 
@@ -2377,28 +2418,9 @@ window.AppSession?.guardStudentPage?.();
                 onSnapshot(doc(db, `${BASE_PATH}/settings`, 'config'), snap => {
                     const conf = snap.exists() ? snap.data() : {};
                     
-                    const allowPhotoUpload = conf.allowStudentPhotoUpload === true;
-                    const allowDetailsEdit = conf.allowStudentDetailsEdit === true;
-
-                    const photoControls = document.getElementById('student-photo-controls');
-                    if (photoControls) {
-                        if (allowPhotoUpload) {
-                            photoControls.classList.remove('hidden');
-                            photoControls.classList.add('flex');
-                        } else {
-                            photoControls.classList.add('hidden');
-                            photoControls.classList.remove('flex');
-                        }
-                    }
-                    
-                    const editDetailsBtn = document.getElementById('student-edit-details-btn');
-                    if (editDetailsBtn) {
-                        if (allowDetailsEdit) {
-                            editDetailsBtn.classList.remove('hidden');
-                        } else {
-                            editDetailsBtn.classList.add('hidden');
-                        }
-                    }
+                    studentPortalPerms.allowPhotoUpload = conf.allowStudentPhotoUpload === true;
+                    studentPortalPerms.allowDetailsEdit = conf.allowStudentDetailsEdit === true;
+                    applyStudentPortalPermissionsUI();
 
                     applyInstitutionBranding(conf, {
                         defaultAppName: 'Student Dashboard',
@@ -2444,6 +2466,11 @@ window.AppSession?.guardStudentPage?.();
                     const academicData = academicYearSnap.exists() ? academicYearSnap.data() : {};
                     academicYearSettings = Array.isArray(academicData.years) ? academicData.years : [];
                     currentAcademicYear = academicData.currentYear || currentAcademicYear || '';
+                    const acadYearEl = document.getElementById('dash-academic-year');
+                    if (acadYearEl) {
+                        const yr = currentAcademicYear || studentProfile?.academicYear || selectedFeeAcademicYear || '';
+                        acadYearEl.textContent = yr ? `Academic Year: ${yr}` : 'Academic Year: Current';
+                    }
                     if (studentProfile && selectedFeeAcademicYear) {
                         availableAcademicYears = buildAvailableAcademicYears(studentProfile, allPayments, studentResultsCache);
                         if (!availableAcademicYears.includes(selectedFeeAcademicYear)) {
