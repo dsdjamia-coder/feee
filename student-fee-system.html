@@ -1,4 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Madrasa Fee Management</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+
+    <!-- Firebase v9 Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <!-- PapaParse for CSV Upload -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <!-- SheetJS for Excel Upload -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- PDF Table Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        .table-container { max-height: calc(100vh - 230px); overflow: auto; }
+        .custom-tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
+
+.app-header { position: sticky; top: 0; z-index: 60; }
+.student-controls { position: sticky; top: 80px; z-index: 50; }
+.student-table-head th { position: sticky; top: 0; z-index: 45; background: #f3f4f6; }
+
+@media (max-width: 1024px) { .table-container { max-height: calc(100vh - 300px); } }
+
+</style>
+
+</head>
+<body>
+    <div id="root"></div>
+
+    <script>
+// Firebase Configuration for Madrasa Fee Management
+// This file exposes the initialized Firebase app and Firestore database
+// as globals (`app` and `db`) for the browser-based React application.
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDdUyk_yvZoQ1JI1pPLJTK51U91BVO0XSA",
+    authDomain: "bright-tube-p07pf.firebaseapp.com",
+    projectId: "bright-tube-p07pf",
+    storageBucket: "bright-tube-p07pf.firebasestorage.app",
+    messagingSenderId: "239455260650",
+    appId: "1:239455260650:web:5c3d61cbd8fcfefccc6c93",
+    firestoreDatabaseId: "ai-studio-feee-81b4709b-982c-4f96-b21b-c346855b9aa2"
+};
+
+const app = firebase.initializeApp(firebaseConfig);
+const db = app.firestore(firebaseConfig.firestoreDatabaseId);
+
+// Prepend BASE_PATH to all collections and docs that do not start with it
+const BASE_PATH_GLOBAL = 'institutions/TEST_INSTITUTE_01';
+const originalCollection = db.collection;
+db.collection = function(path) {
+    if (path && !path.startsWith('institutions/')) {
+        return originalCollection.call(db, `${BASE_PATH_GLOBAL}/${path}`);
+    }
+    return originalCollection.call(db, path);
+};
+const originalDoc = db.doc;
+db.doc = function(path) {
+    if (path && !path.startsWith('institutions/')) {
+        return originalDoc.call(db, `${BASE_PATH_GLOBAL}/${path}`);
+    }
+    return originalDoc.call(db, path);
+};
+
+</script>
+    <script type="text/babel">
 const { useState, useEffect, useMemo, useRef } = React;
+        const BASE_PATH = 'institutions/TEST_INSTITUTE_01';
 
         // Firebase services are initialized in js/firebase-config.js
 
@@ -61,7 +151,15 @@ const { useState, useEffect, useMemo, useRef } = React;
 
         // Main App Component
         const App = () => {
-            const [activeTab, setActiveTab] = useState('DASHBOARD');
+            const urlParams = React.useMemo(() => new URLSearchParams(window.location.search), []);
+            const isEmbedded = React.useMemo(() => !!urlParams.get('view'), [urlParams]);
+            const [activeTab, setActiveTab] = useState(() => {
+                const view = urlParams.get('view');
+                if (view && ['DASHBOARD', 'STUDENTS', 'FEE_ENTRY', 'FEE_HISTORY', 'CLASSES', 'SETTINGS'].includes(view.toUpperCase())) {
+                    return view.toUpperCase();
+                }
+                return 'DASHBOARD';
+            });
             const [menuOpen, setMenuOpen] = useState(false);
             const [students, setStudents] = useState([]);
             const [settings, setSettings] = useState({
@@ -79,6 +177,14 @@ const { useState, useEffect, useMemo, useRef } = React;
             });
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
+
+            const [CLASSES, setClasses] = useState(['+2', '+1', '10', '9', '8', '7', '6', '5', '4', '3', '2', '1']);
+            const [activeYearRecord, setActiveYearRecord] = useState(null);
+            const [academicYear, setAcademicYear] = useState('');
+            const isReadOnly = React.useMemo(() => {
+                const role = urlParams.get('role');
+                return (role === 'cashier' || role === 'collector');
+            }, [urlParams]);
 
             // Global Alert State
             const [alertState, setAlertState] = useState({ isOpen: false, title: '', message: '' });
@@ -116,44 +222,76 @@ const { useState, useEffect, useMemo, useRef } = React;
                     setLoading(false);
                 }, err => setError("Database Rules Error."));
 
-                return () => { unsubSettings(); unsubStudents(); };
+                // Fetch academic years and active class configuration from main app database
+                const unsubAcademic = db.doc('institutions/TEST_INSTITUTE_01/settings/academicYears').onSnapshot(doc => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        const currentYear = data.currentYear || '';
+                        setAcademicYear(currentYear);
+                        const years = data.years || [];
+                        const activeRecord = years.find(y => y.label === currentYear || y.status === 'active') || years[0];
+                        if (activeRecord) {
+                            setActiveYearRecord(activeRecord);
+                            if (Array.isArray(activeRecord.classes) && activeRecord.classes.length > 0) {
+                                setClasses(activeRecord.classes);
+                            }
+                        }
+                    }
+                }, err => console.warn("Academic years setting load failed:", err));
+
+                return () => { unsubSettings(); unsubStudents(); unsubAcademic(); };
             }, []);
 
-            // Generate Dynamic Academic Months based on Settings
+            // Generate Dynamic Academic Months based on Settings or Active Year Record
             const dynamicMonths = useMemo(() => {
-                let res = [];
                 let s = ALL_MONTHS_BASE.indexOf(settings.academicStartMonth);
                 let e = ALL_MONTHS_BASE.indexOf(settings.academicEndMonth);
+
+                if (activeYearRecord) {
+                    const startMonthIdx = activeYearRecord.startMonth !== undefined ? activeYearRecord.startMonth : 5;
+                    const endMonthIdx = activeYearRecord.endMonth !== undefined ? activeYearRecord.endMonth : 4;
+                    if (startMonthIdx >= 0 && startMonthIdx < 12) s = startMonthIdx;
+                    if (endMonthIdx >= 0 && endMonthIdx < 12) e = endMonthIdx;
+                }
+
+                let res = [];
                 if (s <= e) res = ALL_MONTHS_BASE.slice(s, e + 1);
                 else res = [...ALL_MONTHS_BASE.slice(s), ...ALL_MONTHS_BASE.slice(0, e + 1)];
                 return res;
-            }, [settings.academicStartMonth, settings.academicEndMonth]);
+            }, [settings.academicStartMonth, settings.academicEndMonth, activeYearRecord]);
+
+            const activeStudents = useMemo(() => {
+                if (!academicYear) return [];
+                return students.filter(s => (s.academicYear || '') === academicYear);
+            }, [students, academicYear]);
 
             if (error) return <div className="min-h-screen flex items-center justify-center text-red-600 font-bold">{error}</div>;
             if (loading) return <div className="min-h-screen flex items-center justify-center animate-pulse text-gray-500 font-bold">Loading Data...</div>;
 
             return (
-                <div className="min-h-screen flex flex-col bg-gray-50">
-                    <header className="app-header text-white shadow-md relative" style={{ backgroundColor: settings.headerColor || '#15803d' }}>
-                        <div className="max-w-full px-4 sm:px-6 lg:px-8 py-4 grid grid-cols-[auto_1fr_auto] items-center gap-3">
-                            <button onClick={() => setMenuOpen(!menuOpen)} className="p-2 rounded-lg bg-black/20 hover:bg-black/30"><Icons.Menu /></button>
-                            <div className="text-center min-w-0">
-                                <h1 className="text-2xl font-bold truncate">{settings.institutionName || 'Madrasa Fee Manager'}</h1>
-                                <p className="text-xs text-green-100 truncate">{settings.institutionPlace || 'Fee Management System'} {settings.registerNumber ? `• Reg: ${settings.registerNumber}` : ''}</p>
+                <div className={`flex flex-col ${isEmbedded ? 'bg-white min-h-0' : 'min-h-screen bg-gray-50'}`}>
+                    {!isEmbedded && (
+                        <header className="app-header text-white shadow-md relative" style={{ backgroundColor: settings.headerColor || '#15803d' }}>
+                            <div className="max-w-full px-4 sm:px-6 lg:px-8 py-4 grid grid-cols-[auto_1fr_auto] items-center gap-3">
+                                <button onClick={() => setMenuOpen(!menuOpen)} className="p-2 rounded-lg bg-black/20 hover:bg-black/30"><Icons.Menu /></button>
+                                <div className="text-center min-w-0">
+                                    <h1 className="text-2xl font-bold truncate">{settings.institutionName || 'Madrasa Fee Manager'}</h1>
+                                    <p className="text-xs text-green-100 truncate">{settings.institutionPlace || 'Fee Management System'} {settings.registerNumber ? `• Reg: ${settings.registerNumber}` : ''}</p>
+                                </div>
+                                {settings.logo ? <img src={settings.logo} className="w-12 h-12 rounded-full bg-white object-cover border-2 border-white justify-self-end" /> : <div className="w-12 h-12 rounded-full bg-green-900 flex items-center justify-center font-black justify-self-end">MF</div>}
                             </div>
-                            {settings.logo ? <img src={settings.logo} className="w-12 h-12 rounded-full bg-white object-cover border-2 border-white justify-self-end" /> : <div className="w-12 h-12 rounded-full bg-green-900 flex items-center justify-center font-black justify-self-end">MF</div>}
-                        </div>
-                        {menuOpen && <div className="absolute left-4 top-20 z-50 w-72 rounded-xl bg-white text-gray-800 shadow-2xl border overflow-hidden">
-                            {[['DASHBOARD','Dashboard',<Icons.Dashboard />],['STUDENTS','Student Management',<Icons.Users />],['FEE_ENTRY','Fee Entry',<Icons.PlusCircle />],['FEE_HISTORY','Fee History',<Icons.Check />],['CLASSES','Class Management',<Icons.Users />],['SETTINGS','Settings',<Icons.Settings />]].map(([key,label,icon]) => <button key={key} onClick={() => { setActiveTab(key); setMenuOpen(false); }} className={`w-full flex items-center px-5 py-4 font-bold hover:bg-green-50 ${activeTab === key ? 'bg-green-100 text-green-800' : ''}`}>{icon}{label}</button>)}
-                        </div>}
-                    </header>
-                    <main className="flex-1 max-w-full w-full mx-auto p-4 sm:p-6 lg:p-8 bg-white shadow-inner">
-                        {activeTab === 'DASHBOARD' && <DashboardTab students={students} settings={settings} dynamicMonths={dynamicMonths} />}
-                        {activeTab === 'STUDENTS' && <StudentTab students={students} settings={settings} dynamicMonths={dynamicMonths} showAlert={showAlert} />}
-                        {activeTab === 'FEE_ENTRY' && <FeeEntryTab students={students} settings={settings} dynamicMonths={dynamicMonths} showAlert={showAlert} />}
-                        {activeTab === 'FEE_HISTORY' && <FeeHistoryTab students={students} settings={settings} dynamicMonths={dynamicMonths} showAlert={showAlert} />}
-                        {activeTab === 'CLASSES' && <ClassManagementTab students={students} showAlert={showAlert} />}
-                        {activeTab === 'SETTINGS' && <SettingsTab settings={settings} students={students} ALL_MONTHS_BASE={ALL_MONTHS_BASE} showAlert={showAlert} />}
+                            {menuOpen && <div className="absolute left-4 top-20 z-50 w-72 rounded-xl bg-white text-gray-800 shadow-2xl border overflow-hidden">
+                                {[['DASHBOARD','Dashboard',<Icons.Dashboard />],['STUDENTS','Student Management',<Icons.Users />]].map(([key,label,icon]) => <button key={key} onClick={() => { setActiveTab(key); setMenuOpen(false); }} className={`w-full flex items-center px-5 py-4 font-bold hover:bg-green-50 ${activeTab === key ? 'bg-green-100 text-green-800' : ''}`}>{icon}{label}</button>)}
+                            </div>}
+                        </header>
+                    )}
+                    <main className={`flex-grow max-w-full w-full mx-auto ${isEmbedded ? 'p-0 bg-white' : 'p-4 sm:p-6 lg:p-8 bg-white shadow-inner'}`}>
+                        {activeTab === 'DASHBOARD' && <DashboardTab students={activeStudents} settings={settings} dynamicMonths={dynamicMonths} CLASSES={CLASSES} academicYear={academicYear} />}
+                        {activeTab === 'STUDENTS' && <StudentTab students={activeStudents} settings={settings} dynamicMonths={dynamicMonths} showAlert={showAlert} CLASSES={CLASSES} isReadOnly={isReadOnly} academicYear={academicYear} />}
+                        {activeTab === 'FEE_ENTRY' && <FeeEntryTab students={activeStudents} settings={settings} dynamicMonths={dynamicMonths} showAlert={showAlert} CLASSES={CLASSES} />}
+                        {activeTab === 'FEE_HISTORY' && <FeeHistoryTab students={activeStudents} settings={settings} dynamicMonths={dynamicMonths} showAlert={showAlert} CLASSES={CLASSES} />}
+                        {activeTab === 'CLASSES' && <ClassManagementTab students={activeStudents} showAlert={showAlert} CLASSES={CLASSES} />}
+                        {activeTab === 'SETTINGS' && <SettingsTab settings={settings} students={activeStudents} ALL_MONTHS_BASE={ALL_MONTHS_BASE} showAlert={showAlert} CLASSES={CLASSES} />}
                     </main>
 
                     <CustomAlert isOpen={alertState.isOpen} title={alertState.title} message={alertState.message} onClose={() => setAlertState({ isOpen: false, title: '', message: '' })} />
@@ -168,7 +306,7 @@ const { useState, useEffect, useMemo, useRef } = React;
         };
         const feeAppliesToStudent = (fee, studentClass) => fee?.mode === 'ALL' || fee?.applyTo === 'ALL' || fee?.applyTo === studentClass || (fee?.mode === 'MULTI' && parseInt(fee.classAmounts?.[studentClass] || 0) > 0);
 
-        const DashboardTab = ({ students, settings, dynamicMonths }) => {
+        const DashboardTab = ({ students, settings, dynamicMonths, CLASSES, academicYear }) => {
             const [detailView, setDetailView] = useState(null);
             const totalStudents = students.length;
             const boysTotal = students.filter(s => s.gender === 'M').length;
@@ -239,7 +377,13 @@ const { useState, useEffect, useMemo, useRef } = React;
                 [`₹${monthlyBalance}`, 'Monthly Pending', 'bg-red-600']
             ];
             return <div className="space-y-6">
-                <div className="bg-gradient-to-r from-green-700 to-emerald-600 text-white rounded-2xl p-6 shadow-lg"><h2 className="text-2xl font-black">Dashboard</h2><p className="text-green-100">Month-wise fee demand, collected amount, pending amount, class strength and fee balance details.</p></div>
+                <div className="bg-gradient-to-r from-green-700 to-emerald-600 text-white rounded-2xl p-6 shadow-lg">
+                    <div className="flex justify-between items-center flex-wrap gap-2">
+                        <h2 className="text-2xl font-black">Dashboard</h2>
+                        {academicYear && <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold">Academic Year: {academicYear}</span>}
+                    </div>
+                    <p className="text-green-100 mt-2">Month-wise fee demand, collected amount, pending amount, class strength and fee balance details.</p>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">{statCards.map(([v,l,c]) => <div key={l} className={`${c} text-white rounded-xl p-5 shadow`}><div className="text-3xl font-black">{v}</div><div className="text-sm opacity-90 font-bold">{l}</div></div>)}</div>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 bg-white rounded-xl border shadow p-5"><h3 className="font-black text-gray-800 mb-4">Month-wise Fee Collection</h3><div className="overflow-x-auto"><table className="w-full text-sm border"><thead className="bg-gray-100"><tr><th className="p-2 border text-left">Month</th><th className="p-2 border text-right">Need to Collect</th><th className="p-2 border text-right">Collected</th><th className="p-2 border text-right">Pending</th></tr></thead><tbody>{monthlyRows.map(row => <tr key={row.month}><td className="p-2 border font-black">{row.month}</td><td className="p-2 border text-right font-bold">₹{row.expected}</td><td className="p-2 border text-right font-bold text-green-700">₹{row.collected}</td><td className="p-2 border text-right font-bold text-red-600">₹{row.balance}</td></tr>)}</tbody><tfoot className="bg-gray-50 font-black"><tr><td className="p-2 border">Total</td><td className="p-2 border text-right">₹{monthlyExpected}</td><td className="p-2 border text-right text-green-700">₹{monthlyCollected}</td><td className="p-2 border text-right text-red-600">₹{monthlyBalance}</td></tr></tfoot></table></div></div>
@@ -295,7 +439,7 @@ const { useState, useEffect, useMemo, useRef } = React;
             return `${match[1]}${next}`;
         };
 
-        const FeeEntryTab = ({ students, settings, dynamicMonths, showAlert }) => {
+        const FeeEntryTab = ({ students, settings, dynamicMonths, showAlert, CLASSES }) => {
             const [studentClass, setStudentClass] = useState('');
             const [gender, setGender] = useState('ALL');
             const [query, setQuery] = useState('');
@@ -395,7 +539,7 @@ const { useState, useEffect, useMemo, useRef } = React;
             </div>;
         };
 
-        const FeeHistoryTab = ({ students, settings, dynamicMonths, showAlert }) => {
+        const FeeHistoryTab = ({ students, settings, dynamicMonths, showAlert, CLASSES }) => {
             const rows = buildFeeHistoryRows(students, settings, dynamicMonths);
             const [editingRow, setEditingRow] = useState(null);
             const [editAmount, setEditAmount] = useState('');
@@ -430,7 +574,7 @@ const { useState, useEffect, useMemo, useRef } = React;
         };
 
         // --- STUDENTS TAB COMPONENT ---
-        const StudentTab = ({ students, settings, dynamicMonths, showAlert }) => {
+        const StudentTab = ({ students, settings, dynamicMonths, showAlert, CLASSES, isReadOnly, academicYear }) => {
             const [search, setSearch] = useState('');
 
             // Filters
@@ -861,6 +1005,11 @@ const { useState, useEffect, useMemo, useRef } = React;
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
+                            {academicYear && (
+                                <div className="text-xs font-bold bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 rounded-lg flex items-center shadow-sm">
+                                    Academic Year: {academicYear}
+                                </div>
+                            )}
                             <select className="px-2 py-1.5 border rounded text-sm bg-white" value={classFilter} onChange={e => setClassFilter(e.target.value)}>
                                 <option value="">Filter: All Classes</option>
                                 {CLASSES.map(c => <option key={c} value={c}>Class {c}</option>)}
@@ -881,19 +1030,21 @@ const { useState, useEffect, useMemo, useRef } = React;
 
                             <div className="border-l border-gray-300 mx-1 h-6 hidden xl:block"></div>
 
-                            <div className="flex items-center bg-blue-50 border border-blue-200 rounded p-1">
-                                <select className="px-2 py-1 bg-transparent outline-none text-xs font-bold text-blue-800" value={selectedUploadClass} onChange={e => setSelectedUploadClass(e.target.value)}>
-                                    <option value="">-- Target Class --</option>
-                                    {CLASSES.map(c => <option key={c} value={c}>Class {c}</option>)}
-                                </select>
-                                <input type="file" accept=".csv,.xlsx,.xls" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-                                <button onClick={triggerFileUpload} disabled={uploading} className="flex items-center bg-blue-700 hover:bg-blue-800 text-white px-2 py-1 rounded font-medium text-xs disabled:opacity-50 ml-1">
-                                    <Icons.Upload /> {uploading ? 'Wait...' : 'CSV / Excel Upload'}
-                                </button>
-                            </div>
+                            {!isReadOnly && (
+                                <div className="flex items-center bg-blue-50 border border-blue-200 rounded p-1">
+                                    <select className="px-2 py-1 bg-transparent outline-none text-xs font-bold text-blue-800" value={selectedUploadClass} onChange={e => setSelectedUploadClass(e.target.value)}>
+                                        <option value="">-- Target Class --</option>
+                                        {CLASSES.map(c => <option key={c} value={c}>Class {c}</option>)}
+                                    </select>
+                                    <input type="file" accept=".csv,.xlsx,.xls" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+                                    <button onClick={triggerFileUpload} disabled={uploading} className="flex items-center bg-blue-700 hover:bg-blue-800 text-white px-2 py-1 rounded font-medium text-xs disabled:opacity-50 ml-1">
+                                        <Icons.Upload /> {uploading ? 'Wait...' : 'CSV / Excel Upload'}
+                                    </button>
+                                </div>
+                            )}
 
                             <button onClick={downloadTablePdf} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded font-medium text-sm transition-colors shadow-sm">Preview PDF</button>
-                            <button onClick={handleAddSingle} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded font-medium text-sm transition-colors shadow-sm">+ Add Student</button>
+                            {!isReadOnly && <button onClick={handleAddSingle} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded font-medium text-sm transition-colors shadow-sm">+ Add Student</button>}
                         </div>
                     </div>
 
@@ -962,13 +1113,13 @@ const { useState, useEffect, useMemo, useRef } = React;
                                                 </td>
 
                                                 <td className="px-2 py-2 border-r text-center bg-yellow-50/20">
-                                                    <button onClick={() => { setSelectedFamilyStudent(student); setGroupOnlyMode(true); setFamilyModalOpen(true); }} className={`w-full flex items-center justify-center px-1 py-1 bg-white border rounded font-bold shadow-sm transition-all text-[11px] tracking-wide ${hasConcession ? 'border-yellow-400 text-yellow-900 bg-yellow-50' : 'border-gray-200 text-gray-700 hover:border-yellow-300'}`}>
+                                                    <button onClick={isReadOnly ? null : () => { setSelectedFamilyStudent(student); setGroupOnlyMode(true); setFamilyModalOpen(true); }} className={isReadOnly ? `w-full flex items-center justify-center px-1 py-1 font-bold text-[11px] tracking-wide ${hasConcession ? 'text-yellow-800' : 'text-gray-700'}` : `w-full flex items-center justify-center px-1 py-1 bg-white border rounded font-bold shadow-sm transition-all text-[11px] tracking-wide ${hasConcession ? 'border-yellow-400 text-yellow-900 bg-yellow-50' : 'border-gray-200 text-gray-700 hover:border-yellow-300'}`} disabled={isReadOnly}>
                                                         {isGroup && <Icons.Link />} ₹{actualFee} {isGroup ? `(${groupMembers.length})` : ''}
                                                     </button>
                                                 </td>
 
                                                 <td className="px-2 py-2 border-r text-center bg-purple-50/20">
-                                                    <button onClick={() => openExtraFeeModal(student)} className={`w-full flex flex-col items-center justify-center px-1 py-1 bg-white border rounded font-bold shadow-sm text-[11px] leading-tight ${dueExFee > 0 ? 'border-purple-300 text-purple-700' : 'border-gray-200 text-green-700'}`}>
+                                                    <button onClick={isReadOnly ? null : () => openExtraFeeModal(student)} className={isReadOnly ? `w-full flex flex-col items-center justify-center px-1 py-1 font-bold text-[11px] leading-tight ${dueExFee > 0 ? 'text-purple-700' : 'text-green-700'}` : `w-full flex flex-col items-center justify-center px-1 py-1 bg-white border rounded font-bold shadow-sm text-[11px] leading-tight ${dueExFee > 0 ? 'border-purple-300 text-purple-700' : 'border-gray-200 text-green-700'}`} disabled={isReadOnly}>
                                                         <span>Total: ₹{totalExFee}</span>
                                                         <span className={dueExFee > 0 ? 'text-red-600' : 'text-green-600'}>{dueExFee > 0 ? `Balance: ₹${dueExFee}` : 'Balance: ₹0'}</span>
                                                     </button>
@@ -989,11 +1140,11 @@ const { useState, useEffect, useMemo, useRef } = React;
                     </div>
 
                     {importPreview && <ImportPreviewModal preview={importPreview} onCancel={() => setImportPreview(null)} onConfirm={confirmImport} importing={uploading} />}
-                    {familyModalOpen && <FamilySetupModal primaryStudent={selectedFamilyStudent} allStudents={students} globalBaseFee={settings.globalBaseFee} groupOnly={groupOnlyMode} onClose={() => setFamilyModalOpen(false)} showAlert={showAlert}/>}
-                    {paymentModalOpen && <GroupPaymentModal context={paymentGroupData} settings={settings} onClose={() => setPaymentModalOpen(false)} showAlert={showAlert}/>}
-                    {multiPaymentModalOpen && <MultiPaymentModal selectedItems={selectedMonthPayments} settings={settings} onClose={() => setMultiPaymentModalOpen(false)} onSaved={() => { setMultiPaymentModalOpen(false); clearMultiSelection(); }} showAlert={showAlert}/>}
-                    {extraFeeModalOpen && <ExtraFeeModal student={extraFeeStudentData} settings={settings} onClose={() => setExtraFeeModalOpen(false)} showAlert={showAlert}/>}
-                    {profileModalOpen && <StudentProfileModal student={selectedProfile} onClose={() => setProfileModalOpen(false)} onEdit={() => openFullStudentEditor(selectedProfile)} showAlert={showAlert} />}
+                    {familyModalOpen && <FamilySetupModal primaryStudent={selectedFamilyStudent} allStudents={students} globalBaseFee={settings.globalBaseFee} groupOnly={groupOnlyMode} onClose={() => setFamilyModalOpen(false)} showAlert={showAlert} CLASSES={CLASSES} isReadOnly={isReadOnly} />}
+                    {paymentModalOpen && <GroupPaymentModal context={paymentGroupData} settings={settings} onClose={() => setPaymentModalOpen(false)} showAlert={showAlert} />}
+                    {multiPaymentModalOpen && <MultiPaymentModal selectedItems={selectedMonthPayments} settings={settings} onClose={() => setMultiPaymentModalOpen(false)} onSaved={() => { setMultiPaymentModalOpen(false); clearMultiSelection(); }} showAlert={showAlert} />}
+                    {extraFeeModalOpen && <ExtraFeeModal student={extraFeeStudentData} settings={settings} onClose={() => setExtraFeeModalOpen(false)} showAlert={showAlert} />}
+                    {profileModalOpen && <StudentProfileModal student={selectedProfile} onClose={() => setProfileModalOpen(false)} onEdit={() => openFullStudentEditor(selectedProfile)} showAlert={showAlert} isReadOnly={isReadOnly} />}
                 </div>
             );
         };
@@ -1018,7 +1169,7 @@ const { useState, useEffect, useMemo, useRef } = React;
         };
 
         // --- STUDENT PROFILE MODAL ---
-        const StudentProfileModal = ({ student, onClose, onEdit, showAlert }) => {
+        const StudentProfileModal = ({ student, onClose, onEdit, showAlert, isReadOnly }) => {
             if (!student) return null;
             const prof = student.profile || {};
 
@@ -1031,8 +1182,12 @@ const { useState, useEffect, useMemo, useRef } = React;
                         </div>
                         <div className="p-6">
                             <div className="flex items-center space-x-4 border-b pb-4 mb-4">
-                                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-bold uppercase">
-                                    {student.name.charAt(0)}
+                                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-bold uppercase overflow-hidden border">
+                                    {student.photo || prof.photo ? (
+                                        <img src={student.photo || prof.photo} className="w-full h-full object-cover" alt="Student Profile" />
+                                    ) : (
+                                        student.name.charAt(0)
+                                    )}
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-bold text-gray-800 uppercase">{student.name}</h2>
@@ -1051,8 +1206,189 @@ const { useState, useEffect, useMemo, useRef } = React;
                             </div>
                         </div>
                         <div className="bg-gray-50 px-6 py-4 border-t flex justify-between items-center">
-                            <button onClick={async () => { if (confirm('Delete this student record permanently?')) { await db.collection('students').doc(student.id).delete(); onClose(); showAlert('Student deleted successfully.', 'Deleted'); } }} className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md font-bold">Delete</button>
-                            <div className="space-x-2"><button onClick={onClose} className="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md font-bold">Cancel</button><button onClick={onEdit} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold shadow">Edit</button></div>
+                            {!isReadOnly && <button onClick={async () => { if (confirm('Delete this student record permanently?')) { await db.collection('students').doc(student.id).delete(); onClose(); showAlert('Student deleted successfully.', 'Deleted'); } }} className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md font-bold">Delete</button>}
+                            <div className="space-x-2"><button onClick={onClose} className="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md font-bold">{isReadOnly ? 'Close' : 'Cancel'}</button>{!isReadOnly && <button onClick={onEdit} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold shadow">Edit</button>}</div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- REACT CAMERA POPUP ---
+        const CameraPopup = ({ onCapture, onClose }) => {
+            const videoRef = React.useRef(null);
+            const streamRef = React.useRef(null);
+            const [error, setError] = React.useState('');
+
+            React.useEffect(() => {
+                let activeStream = null;
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    setError('Camera access is not supported in this browser.');
+                    return;
+                }
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+                    .then(stream => {
+                        if (videoRef.current) {
+                            videoRef.current.srcObject = stream;
+                            videoRef.current.play().catch(e => console.warn(e));
+                        }
+                        streamRef.current = stream;
+                        activeStream = stream;
+                    })
+                    .catch(err => {
+                        console.error('Camera access error:', err);
+                        setError('Camera access denied or unavailable.');
+                    });
+
+                return () => {
+                    if (activeStream) {
+                        activeStream.getTracks().forEach(track => track.stop());
+                    }
+                };
+            }, []);
+
+            const capture = () => {
+                const video = videoRef.current;
+                if (!video) return;
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                onCapture(canvas.toDataURL('image/jpeg'));
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[100] p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden p-5 space-y-4">
+                        <div className="flex justify-between items-center border-b pb-2">
+                            <h3 className="font-bold text-gray-800">Take Photo</h3>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl font-bold">&times;</button>
+                        </div>
+                        
+                        <div className="relative aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center">
+                            {error ? (
+                                <div className="text-red-500 text-xs font-bold text-center p-4">{error}</div>
+                            ) : (
+                                <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+                            )}
+                        </div>
+
+                        <div className="flex justify-end gap-2 border-t pt-3">
+                            <button type="button" onClick={onClose} className="px-4 py-2 border rounded text-xs font-bold text-gray-600">Close</button>
+                            {!error && (
+                                <button type="button" onClick={capture} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow-md flex items-center gap-1">
+                                    <i className="fas fa-camera"></i> Capture
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- REACT PHOTO EDITOR/CROP POPUP ---
+        const PhotoEditorPopup = ({ imageSrc, onSave, onClose }) => {
+            const [zoom, setZoom] = React.useState(1);
+            const [panX, setPanX] = React.useState(0);
+            const [panY, setPanY] = React.useState(0);
+            const imageRef = React.useRef(null);
+            const canvasRef = React.useRef(null);
+
+            React.useEffect(() => {
+                const img = new Image();
+                img.onload = () => {
+                    draw();
+                };
+                img.src = imageSrc;
+                imageRef.current = img;
+            }, [imageSrc, zoom, panX, panY]);
+
+            const draw = () => {
+                const canvas = canvasRef.current;
+                if (!canvas || !imageRef.current) return;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, 150, 150);
+
+                const img = imageRef.current;
+                const drawWidth = 150 * zoom;
+                const drawHeight = (img.height / img.width) * drawWidth;
+
+                const xOffset = (150 - drawWidth) / 2 + (panX * drawWidth / 100);
+                const yOffset = (150 - drawHeight) / 2 + (panY * drawHeight / 100);
+
+                ctx.drawImage(img, xOffset, yOffset, drawWidth, drawHeight);
+            };
+
+            const handleSave = () => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                let quality = 0.9;
+                let base64 = canvas.toDataURL('image/jpeg', quality);
+                
+                // Keep base64 size under 50KB (base64 length * 0.75 is byte size)
+                while (base64.length * 0.75 > 50 * 1024 && quality > 0.1) {
+                    quality -= 0.1;
+                    base64 = canvas.toDataURL('image/jpeg', quality);
+                }
+                
+                // If still over 50KB, scale down resolution iteratively
+                let currentWidth = 150;
+                let currentHeight = 150;
+                while (base64.length * 0.75 > 50 * 1024 && currentWidth > 60) {
+                    currentWidth -= 15;
+                    currentHeight -= 15;
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = currentWidth;
+                    tempCanvas.height = currentHeight;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+                    base64 = tempCanvas.toDataURL('image/jpeg', 0.6);
+                }
+                onSave(base64);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[100] p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden p-5 space-y-4">
+                        <div className="flex justify-between items-center border-b pb-2">
+                            <h3 className="font-bold text-gray-800">Crop Photo</h3>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl font-bold">&times;</button>
+                        </div>
+                        
+                        <div className="flex flex-col items-center justify-center">
+                            <div className="w-[150px] h-[150px] border-2 border-dashed border-blue-500 rounded-full overflow-hidden shadow-inner bg-gray-50">
+                                <canvas ref={canvasRef} width="150" height="150" className="w-full h-full" />
+                            </div>
+                            <span className="text-xs text-gray-400 mt-2">Adjust zoom & position</span>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs font-bold text-gray-600 flex justify-between">
+                                    <span>Zoom</span>
+                                    <span>{zoom.toFixed(1)}x</span>
+                                </label>
+                                <input type="range" min="1" max="4" step="0.1" value={zoom} onChange={e => setZoom(parseFloat(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-600 flex justify-between">
+                                    <span>Move Left / Right</span>
+                                </label>
+                                <input type="range" min="-100" max="100" value={panX} onChange={e => setPanX(parseInt(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-600 flex justify-between">
+                                    <span>Move Up / Down</span>
+                                </label>
+                                <input type="range" min="-100" max="100" value={panY} onChange={e => setPanY(parseInt(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 border-t pt-3">
+                            <button type="button" onClick={onClose} className="px-4 py-2 border rounded text-xs font-bold text-gray-600">Cancel</button>
+                            <button type="button" onClick={handleSave} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow-md">Apply Crop</button>
                         </div>
                     </div>
                 </div>
@@ -1060,7 +1396,7 @@ const { useState, useEffect, useMemo, useRef } = React;
         };
 
         // --- EXPANDED FAMILY / GROUP SETUP MODAL ---
-        const FamilySetupModal = ({ primaryStudent, allStudents, globalBaseFee, groupOnly = false, onClose, showAlert }) => {
+        const FamilySetupModal = ({ primaryStudent, allStudents, globalBaseFee, groupOnly = false, onClose, showAlert, CLASSES, isReadOnly }) => {
             const [members, setMembers] = useState([]);
             const [searchClass, setSearchClass] = useState('');
             const [searchName, setSearchName] = useState('');
@@ -1080,6 +1416,16 @@ const { useState, useEffect, useMemo, useRef } = React;
             const [stAdmDate, setStAdmDate] = useState('');
             const [stSamasthaId, setStSamasthaId] = useState('');
 
+            // Added states for Admin field synchronization
+            const [stFather, setStFather] = useState('');
+            const [stUid, setStUid] = useState('');
+            const [stStatus, setStStatus] = useState('Active');
+            const [stMobile, setStMobile] = useState('');
+
+            const [stPhoto, setStPhoto] = useState('');
+            const [cropImageSrc, setCropImageSrc] = useState('');
+            const [cameraActive, setCameraActive] = useState(false);
+
             // Confirmation States
             const [conflictStudent, setConflictStudent] = useState(null);
             const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -1092,10 +1438,19 @@ const { useState, useEffect, useMemo, useRef } = React;
 
                 const p = grp.find(s => s.id === primaryStudent.id);
                 if(p) {
-                    setStName(p.name || ''); setStClass(p.studentClass || ''); setStGender(p.gender || 'M');
+                    setStName(p.name || ''); setStClass(p.studentClass || p.class || ''); 
+                    const rawGender = p.gender || 'M';
+                    setStGender(rawGender.startsWith('M') || rawGender.startsWith('m') ? 'M' : 'F');
                     const prof = p.profile || {};
-                    setStDob(prof.dob || ''); setStAddress(prof.address || ''); setStAdhaar(prof.adhaar || '');
-                    setStAdmNo(prof.admNo || ''); setStAdmDate(prof.admDate || ''); setStSamasthaId(prof.samasthaId || '');
+                    setStDob(prof.dob || ''); setStAddress(prof.address || p.address || ''); setStAdhaar(prof.adhaar || '');
+                    setStAdmNo(prof.admNo || p.adm || ''); setStAdmDate(prof.admDate || ''); setStSamasthaId(prof.samasthaId || '');
+                    setStPhoto(p.photo || prof.photo || '');
+                    
+                    // Added mappings for Admin field synchronization
+                    setStFather(p.father || prof.father || '');
+                    setStUid(p.uid || prof.uid || '');
+                    setStStatus(p.status || prof.status || 'Active');
+                    setStMobile(p.mobile || prof.mobile || '');
                 }
             }, [primaryStudent, allStudents]);
 
@@ -1136,18 +1491,57 @@ const { useState, useEffect, useMemo, useRef } = React;
 
                 const primaryRef = primaryStudent.isNew ? db.collection('students').doc() : db.collection('students').doc(primaryStudent.id);
                 const finalGroupId = primaryStudent.isNew ? primaryRef.id : (members[0]?.groupId || db.collection('students').doc().id);
+                
+                const finalGender = stGender === 'M' ? 'Male' : (stGender === 'F' ? 'Female' : stGender);
+
                 const primaryPayload = {
-                    name: stName.toUpperCase(), studentClass: stClass, gender: stGender,
-                    profile: { dob: stDob, address: stAddress, adhaar: stAdhaar, admNo: stAdmNo, admDate: stAdmDate, samasthaId: stSamasthaId }, payments: primaryStudent.payments || {}, extraFeePayments: primaryStudent.extraFeePayments || {}
+                    academicYear: academicYear || 'TEST_ACADEMIC_YEAR',
+                    name: stName.toUpperCase().trim(),
+                    class: stClass,
+                    studentClass: stClass,
+                    gender: finalGender,
+                    status: stStatus,
+                    uid: stUid.trim(),
+                    adm: stAdmNo.toUpperCase().trim(),
+                    mobile: stMobile.trim(),
+                    father: stFather.toUpperCase().trim(),
+                    address: stAddress.trim(),
+                    photo: stPhoto,
+                    profile: {
+                        dob: stDob,
+                        address: stAddress.trim(),
+                        adhaar: stAdhaar.trim(),
+                        admNo: stAdmNo.toUpperCase().trim(),
+                        admDate: stAdmDate,
+                        samasthaId: stSamasthaId.trim(),
+                        photo: stPhoto,
+                        uid: stUid.trim(),
+                        father: stFather.toUpperCase().trim(),
+                        mobile: stMobile.trim(),
+                        status: stStatus
+                    },
+                    payments: primaryStudent.payments || {},
+                    extraFeePayments: primaryStudent.extraFeePayments || {}
                 };
+
                 if (!groupOnly) {
-                    primaryStudent.isNew ? batch.set(primaryRef, { ...primaryPayload, groupId: primaryRef.id, guardian: guardian.toUpperCase(), phone: phone, groupFee: finalFee, pendingArrears: finalArrears }) : batch.update(primaryRef, primaryPayload);
+                    const extraFields = {
+                        groupId: finalGroupId,
+                        guardian: guardian.toUpperCase().trim(),
+                        phone: phone.trim(),
+                        groupFee: finalFee,
+                        pendingArrears: finalArrears
+                    };
+                    primaryStudent.isNew ? batch.set(primaryRef, { ...primaryPayload, ...extraFields, groupId: primaryRef.id }) : batch.update(primaryRef, { ...primaryPayload, ...extraFields });
+                    
+                    const targetId = primaryStudent.isNew ? primaryRef.id : primaryStudent.id;
+                    batch.set(db.collection('studentPhotoSubmissions').doc(targetId), { photo: stPhoto, updatedAt: Date.now() }, { merge: true });
                 }
 
-                members.filter(m => !m.isNew).forEach(m => {
+                members.filter(m => !m.isNew && m.id !== primaryStudent.id).forEach(m => {
                     const docRef = db.collection('students').doc(m.id);
                     batch.update(docRef, {
-                        groupId: finalGroupId, guardian: guardian.toUpperCase(), phone: phone,
+                        groupId: finalGroupId, guardian: guardian.toUpperCase().trim(), phone: phone.trim(),
                         groupFee: finalFee, pendingArrears: finalArrears
                     });
                 });
@@ -1189,18 +1583,62 @@ const { useState, useEffect, useMemo, useRef } = React;
                                 <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-gray-200">
                                     <h4 className="font-bold text-gray-800 mb-4 border-b pb-2">1. Student Profile Details</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="sm:col-span-2"><label className="text-xs font-bold text-gray-500 mb-1 block">Full Name *</label><input type="text" className="w-full p-2.5 border rounded font-bold uppercase focus:ring-2 focus:ring-blue-400 outline-none" value={stName} onChange={e => setStName(e.target.value)} required /></div>
-                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Class *</label><select className="w-full p-2.5 border rounded bg-white focus:ring-2 focus:ring-blue-400 outline-none" value={stClass} onChange={e => setStClass(e.target.value)}>{CLASSES.map(c => <option key={c}>{c}</option>)}</select></div>
-                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Gender *</label><select className="w-full p-2.5 border rounded bg-white focus:ring-2 focus:ring-blue-400 outline-none" value={stGender} onChange={e => setStGender(e.target.value)}><option value="M">Male</option><option value="F">Female</option></select></div>
+                                        <div className="sm:col-span-2 flex flex-col items-center sm:flex-row gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100 mb-2">
+                                            <div className="relative w-20 h-20 rounded-full border-2 border-slate-200 overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 shadow-inner">
+                                                {stPhoto ? (
+                                                    <img src={stPhoto} className="w-full h-full object-cover" alt="Student Profile" />
+                                                ) : (
+                                                    <i className="fas fa-user text-3xl text-slate-400"></i>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 text-center sm:text-left space-y-1.5">
+                                                <label className="block text-xs font-black text-slate-700">Student Profile Photo (Max 50KB)</label>
+                                                {!isReadOnly ? (
+                                                    <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                                                        <button type="button" onClick={() => setCameraActive(true)} className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-md font-bold text-xs flex items-center gap-1 shadow-sm transition-all"><i className="fas fa-camera"></i> Camera</button>
+                                                        <label className="cursor-pointer px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-md font-bold text-xs flex items-center gap-1 shadow-sm transition-all">
+                                                            <i className="fas fa-upload"></i> Upload
+                                                            <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) {
+                                                                    const reader = new FileReader();
+                                                                    reader.onload = () => setCropImageSrc(reader.result);
+                                                                    reader.readAsDataURL(file);
+                                                                }
+                                                            }} />
+                                                        </label>
+                                                        {stPhoto && (
+                                                            <button type="button" onClick={() => setStPhoto('')} className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 rounded-md font-bold text-xs transition-all">Remove</button>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[11px] text-gray-500 font-medium">Read-only in Collection Mode</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="sm:col-span-2"><label className="text-xs font-bold text-gray-500 mb-1 block">Full Name *</label><input type="text" className="w-full p-2.5 border rounded font-bold uppercase focus:ring-2 focus:ring-blue-400 outline-none" value={stName} onChange={e => setStName(e.target.value)} required disabled={isReadOnly} /></div>
+                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Class *</label><select className="w-full p-2.5 border rounded bg-white focus:ring-2 focus:ring-blue-400 outline-none" value={stClass} onChange={e => setStClass(e.target.value)} disabled={isReadOnly}>{CLASSES.map(c => <option key={c}>{c}</option>)}</select></div>
+                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Gender *</label><select className="w-full p-2.5 border rounded bg-white focus:ring-2 focus:ring-blue-400 outline-none" value={stGender} onChange={e => setStGender(e.target.value)} disabled={isReadOnly}><option value="M">Male</option><option value="F">Female</option></select></div>
 
-                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Admission No.</label><input type="text" className="w-full p-2 border rounded outline-none" value={stAdmNo} onChange={e => setStAdmNo(e.target.value)} /></div>
-                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Date of Admission</label><input type="date" className="w-full p-2 border rounded outline-none text-sm" value={stAdmDate} onChange={e => setStAdmDate(e.target.value)} /></div>
+                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Admission No.</label><input type="text" className="w-full p-2 border rounded outline-none" value={stAdmNo} onChange={e => setStAdmNo(e.target.value)} disabled={isReadOnly} /></div>
+                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Date of Admission</label><input type="date" className="w-full p-2 border rounded outline-none text-sm" value={stAdmDate} onChange={e => setStAdmDate(e.target.value)} disabled={isReadOnly} /></div>
 
-                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Date of Birth</label><input type="date" className="w-full p-2 border rounded outline-none text-sm" value={stDob} onChange={e => setStDob(e.target.value)} /></div>
-                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Aadhaar No.</label><input type="text" className="w-full p-2 border rounded outline-none" value={stAdhaar} onChange={e => setStAdhaar(e.target.value)} /></div>
+                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Date of Birth</label><input type="date" className="w-full p-2 border rounded outline-none text-sm" value={stDob} onChange={e => setStDob(e.target.value)} disabled={isReadOnly} /></div>
+                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Aadhaar No.</label><input type="text" className="w-full p-2 border rounded outline-none" value={stAdhaar} onChange={e => setStAdhaar(e.target.value)} disabled={isReadOnly} /></div>
 
-                                        <div className="sm:col-span-2"><label className="text-xs font-bold text-gray-500 mb-1 block">Permanent Address</label><textarea rows="2" className="w-full p-2 border rounded outline-none" value={stAddress} onChange={e => setStAddress(e.target.value)}></textarea></div>
-                                        <div className="sm:col-span-2"><label className="text-xs font-bold text-gray-500 mb-1 block">Samastha Online ID</label><input type="text" className="w-full p-2 border rounded outline-none" value={stSamasthaId} onChange={e => setStSamasthaId(e.target.value)} /></div>
+                                        <div className="sm:col-span-2"><label className="text-xs font-bold text-gray-500 mb-1 block">Permanent Address</label><textarea rows="2" className="w-full p-2 border rounded outline-none" value={stAddress} onChange={e => setStAddress(e.target.value)} disabled={isReadOnly}></textarea></div>
+                                        <div className="sm:col-span-2"><label className="text-xs font-bold text-gray-500 mb-1 block">Samastha Online ID</label><input type="text" className="w-full p-2 border rounded outline-none" value={stSamasthaId} onChange={e => setStSamasthaId(e.target.value)} disabled={isReadOnly} /></div>
+                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Father's Name</label><input type="text" className="w-full p-2 border rounded outline-none uppercase font-bold" value={stFather} onChange={e => setStFather(e.target.value)} disabled={isReadOnly} /></div>
+                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Student Mobile</label><input type="tel" className="w-full p-2 border rounded outline-none" value={stMobile} onChange={e => setStMobile(e.target.value)} disabled={isReadOnly} /></div>
+                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">Unique ID (UID)</label><input type="text" className="w-full p-2 border rounded outline-none" value={stUid} onChange={e => setStUid(e.target.value)} disabled={isReadOnly} /></div>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 mb-1 block">Student Status</label>
+                                            <select className="w-full p-2 border rounded bg-white text-sm" value={stStatus} onChange={e => setStStatus(e.target.value)} disabled={isReadOnly}>
+                                                <option value="Active">Active</option>
+                                                <option value="Inactive">Inactive</option>
+                                                <option value="Graduated">Graduated</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             </div>}
@@ -1209,16 +1647,16 @@ const { useState, useEffect, useMemo, useRef } = React;
                                 <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-yellow-300">
                                     <h4 className="font-bold text-yellow-800 mb-4 border-b border-yellow-200 pb-2">2. Shared Family Setup (Finance)</h4>
                                     <div className="space-y-4">
-                                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Guardian Name (Shared)</label><input type="text" className="w-full p-2.5 border border-gray-300 rounded uppercase focus:ring-2 focus:ring-yellow-400 outline-none font-bold" value={guardian} onChange={e => setGuardian(e.target.value)} /></div>
-                                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Mobile No. (Acts as Group ID)</label><input type="tel" className="w-full p-2.5 border border-gray-300 rounded font-bold focus:ring-2 focus:ring-yellow-400 outline-none" value={phone} onChange={e => setPhone(e.target.value)} /></div>
+                                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Guardian Name (Shared)</label><input type="text" className="w-full p-2.5 border border-gray-300 rounded uppercase focus:ring-2 focus:ring-yellow-400 outline-none font-bold" value={guardian} onChange={e => setGuardian(e.target.value)} disabled={isReadOnly} /></div>
+                                        <div><label className="block text-xs font-bold text-gray-500 mb-1">Mobile No. (Acts as Group ID)</label><input type="tel" className="w-full p-2.5 border border-gray-300 rounded font-bold focus:ring-2 focus:ring-yellow-400 outline-none" value={phone} onChange={e => setPhone(e.target.value)} disabled={isReadOnly} /></div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <div>
                                                 <label className="block text-xs font-bold text-gray-500 mb-1">Pending Arrears (₹)</label>
-                                                <input type="number" min="0" className="w-full p-2.5 border border-red-300 rounded bg-red-50 text-red-700 font-bold outline-none" value={pendingArrears} onChange={e => setPendingArrears(e.target.value)} />
+                                                <input type="number" min="0" className="w-full p-2.5 border border-red-300 rounded bg-red-50 text-red-700 font-bold outline-none" value={pendingArrears} onChange={e => setPendingArrears(e.target.value)} disabled={isReadOnly} />
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-bold text-yellow-800 mb-1">Total Fee / Mnt</label>
-                                                <input type="number" min="0" placeholder={`₹${calculateDefaultFee()}`} className="w-full p-2.5 border border-yellow-400 rounded bg-yellow-50 text-yellow-900 font-bold outline-none placeholder-yellow-600/50" value={groupFee} onChange={e => setGroupFee(e.target.value)} />
+                                                <input type="number" min="0" placeholder={`₹${calculateDefaultFee()}`} className="w-full p-2.5 border border-yellow-400 rounded bg-yellow-50 text-yellow-900 font-bold outline-none placeholder-yellow-600/50" value={groupFee} onChange={e => setGroupFee(e.target.value)} disabled={isReadOnly} />
                                             </div>
                                         </div>
                                     </div>
@@ -1235,40 +1673,42 @@ const { useState, useEffect, useMemo, useRef } = React;
                                             {members.map(m => (
                                                 <div key={m.id} className={`flex justify-between items-center gap-2 p-2 rounded border ${m.id === primaryStudent.id ? 'bg-white border-yellow-400' : 'bg-gray-50 border-gray-200'}`}>
                                                     <div className="min-w-0"><span className="font-bold text-sm text-gray-800 break-words">{m.name}</span> <span className="text-[10px] text-gray-600 font-medium bg-gray-200 px-1.5 py-0.5 rounded ml-1 whitespace-nowrap">Cls {m.studentClass}</span></div>
-                                                    {m.id !== primaryStudent.id && <button type="button" onClick={() => removeMember(m.id)} className="text-red-500 hover:text-red-700 p-1 shrink-0"><Icons.Close /></button>}
+                                                    {!isReadOnly && m.id !== primaryStudent.id && <button type="button" onClick={() => removeMember(m.id)} className="text-red-500 hover:text-red-700 p-1 shrink-0"><Icons.Close /></button>}
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
 
-                                    <div className="relative z-[80] mb-3">
-                                        <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-2 bg-blue-50 p-2 rounded border border-blue-100">
-                                            <select className="p-2 border rounded text-xs w-full outline-none" value={searchClass} onChange={e => setSearchClass(e.target.value)}><option value="">Class</option>{CLASSES.map(c => <option key={c} value={c}>{c}</option>)}</select>
-                                            <input type="text" placeholder="Search to add..." className="p-2 border rounded text-xs w-full outline-none" value={searchName} onChange={e => setSearchName(e.target.value)} />
-                                        </div>
-
-                                        {searchName && searchClass && (
-                                            <div className="absolute left-0 right-0 top-full mt-1 z-[90] border border-green-300 rounded max-h-56 overflow-y-auto bg-white shadow-2xl ring-2 ring-green-100">
-                                                {searchResults.length === 0 ? <div className="p-2 text-xs text-gray-500 text-center bg-green-50">No unlinked matches found.</div> :
-                                                    searchResults.map(s => (
-                                                        <div key={s.id} className="flex justify-between items-center gap-2 p-2 border-b bg-green-50 hover:bg-green-100">
-                                                            <span className="text-xs font-bold truncate min-w-0">{s.name}</span>
-                                                            <button type="button" onClick={() => handleAddSiblingAttempt(s)} className="text-[10px] font-bold bg-green-600 text-white px-2 py-1 rounded shadow-sm hover:bg-green-700">ADD</button>
-                                                        </div>
-                                                    ))
-                                                }
+                                    {!isReadOnly && (
+                                        <div className="relative z-[80] mb-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-2 bg-blue-50 p-2 rounded border border-blue-100">
+                                                <select className="p-2 border rounded text-xs w-full outline-none" value={searchClass} onChange={e => setSearchClass(e.target.value)}><option value="">Class</option>{CLASSES.map(c => <option key={c} value={c}>{c}</option>)}</select>
+                                                <input type="text" placeholder="Search to add..." className="p-2 border rounded text-xs w-full outline-none" value={searchName} onChange={e => setSearchName(e.target.value)} />
                                             </div>
-                                        )}
-                                    </div>
+
+                                            {searchName && searchClass && (
+                                                <div className="absolute left-0 right-0 top-full mt-1 z-[90] border border-green-300 rounded max-h-56 overflow-y-auto bg-white shadow-2xl ring-2 ring-green-100">
+                                                    {searchResults.length === 0 ? <div className="p-2 text-xs text-gray-500 text-center bg-green-50">No unlinked matches found.</div> :
+                                                        searchResults.map(s => (
+                                                            <div key={s.id} className="flex justify-between items-center gap-2 p-2 border-b bg-green-50 hover:bg-green-100">
+                                                                <span className="text-xs font-bold truncate min-w-0">{s.name}</span>
+                                                                <button type="button" onClick={() => handleAddSiblingAttempt(s)} className="text-[10px] font-bold bg-green-600 text-white px-2 py-1 rounded shadow-sm hover:bg-green-700">ADD</button>
+                                                            </div>
+                                                        ))
+                                                    }
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
 
                         <div className="bg-white px-4 sm:px-6 py-3 sm:py-4 border-t flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] sm:rounded-b-lg">
-                            {!primaryStudent.isNew && !groupOnly ? <button type="button" onClick={() => setConfirmDeleteOpen(true)} className="w-full sm:w-auto text-red-600 font-bold text-sm hover:underline order-2 sm:order-1 py-2">Delete Record</button> : <span className="hidden sm:block"></span>}
+                            {!primaryStudent.isNew && !groupOnly && !isReadOnly ? <button type="button" onClick={() => setConfirmDeleteOpen(true)} className="w-full sm:w-auto text-red-600 font-bold text-sm hover:underline order-2 sm:order-1 py-2">Delete Record</button> : <span className="hidden sm:block"></span>}
                             <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:gap-3 order-1 sm:order-2">
-                                <button type="button" onClick={onClose} className="w-full sm:w-auto px-4 sm:px-5 py-2.5 border border-gray-300 rounded-md hover:bg-gray-50 font-bold text-gray-700 transition-colors">Cancel</button>
-                                <button type="button" onClick={handleSave} className="w-full sm:w-auto px-4 sm:px-8 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-yellow-950 rounded-md font-extrabold shadow-md transition-colors">{groupOnly ? 'Save Group Setup' : 'Save All Details'}</button>
+                                <button type="button" onClick={onClose} className="w-full sm:w-auto px-4 sm:px-5 py-2.5 border border-gray-300 rounded-md hover:bg-gray-50 font-bold text-gray-700 transition-colors">{isReadOnly ? 'Close' : 'Cancel'}</button>
+                                {!isReadOnly && <button type="button" onClick={handleSave} className="w-full sm:w-auto px-4 sm:px-8 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-yellow-950 rounded-md font-extrabold shadow-md transition-colors">{groupOnly ? 'Save Group Setup' : 'Save All Details'}</button>}
                             </div>
                         </div>
                     </div>
@@ -1287,6 +1727,9 @@ const { useState, useEffect, useMemo, useRef } = React;
                         message="Permanently delete this student record? All payment history will be lost. This cannot be undone."
                         confirmText="Yes, Delete" onConfirm={executeDelete} onCancel={() => setConfirmDeleteOpen(false)}
                     />
+
+                    {cameraActive && <CameraPopup onCapture={(src) => { setCropImageSrc(src); setCameraActive(false); }} onClose={() => setCameraActive(false)} />}
+                    {cropImageSrc && <PhotoEditorPopup imageSrc={cropImageSrc} onSave={(base64) => { setStPhoto(base64); setCropImageSrc(''); }} onClose={() => setCropImageSrc('')} />}
                 </div>
             );
         };
@@ -1807,3 +2250,7 @@ const { useState, useEffect, useMemo, useRef } = React;
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
+
+</script>
+</body>
+</html>

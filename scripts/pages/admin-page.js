@@ -49,6 +49,7 @@ const ADMIN_ROLE_OPTIONS = {
 };
 const PAGE_PERMISSIONS = {
     dashboard: 'dashboard.view',
+    'fee-manager': 'fees.manage',
     'academic-years': 'academic-years.manage',
     'manage-staff': 'staff.manage',
     'add-students': 'students.manage',
@@ -1089,6 +1090,253 @@ if (window.location.hash === '#results') {
     activateAdminPage((window.location.hash || '#dashboard').replace('#', '') || 'dashboard', { pushHistory: false, suppressDeniedAlert: true });
 }
 
+// --- ADMIN PHOTO WIDGET HANDLING ---
+let activeAdminCropImg = null;
+let adminCropZoom = 1;
+let adminCropPanX = 0;
+let adminCropPanY = 0;
+let adminCameraStream = null;
+let activePhotoTargetInputId = '';
+let activePhotoTargetPreviewId = '';
+let activePhotoTargetPlaceholderId = '';
+let activePhotoTargetRemoveBtnId = '';
+
+const drawAdminCropCanvas = () => {
+    const canvas = document.getElementById('admin-crop-canvas');
+    if (!canvas || !activeAdminCropImg) return;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 150, 150);
+
+    const drawWidth = 150 * adminCropZoom;
+    const drawHeight = (activeAdminCropImg.height / activeAdminCropImg.width) * drawWidth;
+
+    const xOffset = (150 - drawWidth) / 2 + (adminCropPanX * drawWidth / 100);
+    const yOffset = (150 - drawHeight) / 2 + (adminCropPanY * drawHeight / 100);
+
+    ctx.drawImage(activeAdminCropImg, xOffset, yOffset, drawWidth, drawHeight);
+};
+
+const setupAdminPhotoWidget = (inputId, previewId, placeholderId, removeBtnId, fileInputId, cameraBtnId, uploadBtnId) => {
+    const fileInput = document.getElementById(fileInputId);
+    const cameraBtn = document.getElementById(cameraBtnId);
+    const uploadBtn = document.getElementById(uploadBtnId);
+    const removeBtn = document.getElementById(removeBtnId);
+
+    const showCropper = (imageSrc) => {
+        const img = new Image();
+        img.onload = () => {
+            activeAdminCropImg = img;
+            adminCropZoom = 1;
+            adminCropPanX = 0;
+            adminCropPanY = 0;
+            activePhotoTargetInputId = inputId;
+            activePhotoTargetPreviewId = previewId;
+            activePhotoTargetPlaceholderId = placeholderId;
+            activePhotoTargetRemoveBtnId = removeBtnId;
+
+            document.getElementById('admin-crop-zoom').value = 1;
+            document.getElementById('admin-crop-panx').value = 0;
+            document.getElementById('admin-crop-pany').value = 0;
+            document.getElementById('admin-zoom-label').textContent = '1.0x';
+            document.getElementById('admin-crop-modal').classList.remove('hidden');
+            document.getElementById('admin-crop-modal').classList.add('flex');
+            drawAdminCropCanvas();
+        };
+        img.src = imageSrc;
+    };
+
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = () => showCropper(reader.result);
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', () => fileInput.click());
+    }
+
+    if (cameraBtn) {
+        cameraBtn.addEventListener('click', async () => {
+            const modal = document.getElementById('admin-camera-modal');
+            const video = document.getElementById('admin-camera-video');
+            activePhotoTargetInputId = inputId;
+            activePhotoTargetPreviewId = previewId;
+            activePhotoTargetPlaceholderId = placeholderId;
+            activePhotoTargetRemoveBtnId = removeBtnId;
+            try {
+                adminCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                video.srcObject = adminCameraStream;
+                video.play();
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            } catch (err) {
+                console.error('Camera access error:', err);
+                alert('ക്യാമറ ആക്സസ് ചെയ്യാൻ കഴിഞ്ഞില്ല.');
+            }
+        });
+    }
+
+    if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+            document.getElementById(inputId).value = '';
+            const preview = document.getElementById(previewId);
+            const placeholder = document.getElementById(placeholderId);
+            if (preview) preview.classList.add('hidden');
+            if (placeholder) placeholder.classList.remove('hidden');
+            removeBtn.classList.add('hidden');
+        });
+    }
+};
+
+const stopAdminCamera = () => {
+    if (adminCameraStream) {
+        adminCameraStream.getTracks().forEach(track => track.stop());
+        adminCameraStream = null;
+    }
+    document.getElementById('admin-camera-modal').classList.add('hidden');
+    document.getElementById('admin-camera-modal').classList.remove('flex');
+};
+
+const updateAdminPhotoWidgetPreview = (value, previewId, placeholderId, removeBtnId, inputId) => {
+    const preview = document.getElementById(previewId);
+    const placeholder = document.getElementById(placeholderId);
+    const removeBtn = document.getElementById(removeBtnId);
+    const input = document.getElementById(inputId);
+
+    if (input) input.value = value || '';
+    if (value) {
+        if (preview) { preview.src = value; preview.classList.remove('hidden'); }
+        if (placeholder) placeholder.classList.add('hidden');
+        if (removeBtn) removeBtn.classList.remove('hidden');
+    } else {
+        if (preview) preview.classList.add('hidden');
+        if (placeholder) placeholder.classList.remove('hidden');
+        if (removeBtn) removeBtn.classList.add('hidden');
+    }
+};
+
+const initAllAdminPhotoWidgets = () => {
+    setupAdminPhotoWidget('st-photo', 'st-photo-preview', 'st-photo-placeholder', 'st-remove-btn', 'st-file-input', 'st-camera-btn', 'st-upload-btn');
+    setupAdminPhotoWidget('e-st-photo', 'e-st-photo-preview', 'e-st-photo-placeholder', 'e-st-remove-btn', 'e-st-file-input', 'e-st-camera-btn', 'e-st-upload-btn');
+    setupAdminPhotoWidget('add-stu-photo', 'add-stu-photo-preview', 'add-stu-photo-placeholder', 'add-stu-remove-btn', 'add-stu-file-input', 'add-stu-camera-btn', 'add-stu-upload-btn');
+    setupAdminPhotoWidget('e-stu-photo', 'e-stu-photo-preview', 'e-stu-photo-placeholder', 'e-stu-remove-btn', 'e-stu-file-input', 'e-stu-camera-btn', 'e-stu-upload-btn');
+
+    // Set up common modal event bindings once
+    document.getElementById('admin-camera-close-btn')?.addEventListener('click', stopAdminCamera);
+    document.getElementById('admin-camera-cancel-btn')?.addEventListener('click', stopAdminCamera);
+    document.getElementById('admin-camera-capture-btn')?.addEventListener('click', () => {
+        const video = document.getElementById('admin-camera-video');
+        if (!video) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        stopAdminCamera();
+
+        const img = new Image();
+        img.onload = () => {
+            activeAdminCropImg = img;
+            adminCropZoom = 1;
+            adminCropPanX = 0;
+            adminCropPanY = 0;
+            document.getElementById('admin-crop-zoom').value = 1;
+            document.getElementById('admin-crop-panx').value = 0;
+            document.getElementById('admin-crop-pany').value = 0;
+            document.getElementById('admin-zoom-label').textContent = '1.0x';
+            document.getElementById('admin-crop-modal').classList.remove('hidden');
+            document.getElementById('admin-crop-modal').classList.add('flex');
+            drawAdminCropCanvas();
+        };
+        img.src = canvas.toDataURL('image/jpeg');
+    });
+
+    document.getElementById('admin-crop-close-btn')?.addEventListener('click', () => {
+        document.getElementById('admin-crop-modal').classList.add('hidden');
+        document.getElementById('admin-crop-modal').classList.remove('flex');
+    });
+    document.getElementById('admin-crop-cancel-btn')?.addEventListener('click', () => {
+        document.getElementById('admin-crop-modal').classList.add('hidden');
+        document.getElementById('admin-crop-modal').classList.remove('flex');
+    });
+
+    const zoomInput = document.getElementById('admin-crop-zoom');
+    const panXInput = document.getElementById('admin-crop-panx');
+    const panYInput = document.getElementById('admin-crop-pany');
+
+    zoomInput?.addEventListener('input', (e) => {
+        adminCropZoom = parseFloat(e.target.value);
+        document.getElementById('admin-zoom-label').textContent = adminCropZoom.toFixed(1) + 'x';
+        drawAdminCropCanvas();
+    });
+    panXInput?.addEventListener('input', (e) => {
+        adminCropPanX = parseInt(e.target.value);
+        drawAdminCropCanvas();
+    });
+    panYInput?.addEventListener('input', (e) => {
+        adminCropPanY = parseInt(e.target.value);
+        drawAdminCropCanvas();
+    });
+
+    document.getElementById('admin-crop-save-btn')?.addEventListener('click', () => {
+        const canvas = document.getElementById('admin-crop-canvas');
+        if (!canvas) return;
+        let quality = 0.9;
+        let base64 = canvas.toDataURL('image/jpeg', quality);
+
+        // Compress base64 size to strictly under 50KB (approx 50 * 1024 bytes)
+        while (base64.length * 0.75 > 50 * 1024 && quality > 0.1) {
+            quality -= 0.1;
+            base64 = canvas.toDataURL('image/jpeg', quality);
+        }
+
+        // If still over 50KB, scale down resolution iteratively
+        let currentWidth = 150;
+        let currentHeight = 150;
+        while (base64.length * 0.75 > 50 * 1024 && currentWidth > 60) {
+            currentWidth -= 15;
+            currentHeight -= 15;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = currentWidth;
+            tempCanvas.height = currentHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+            base64 = tempCanvas.toDataURL('image/jpeg', 0.6);
+        }
+
+        document.getElementById('admin-crop-modal').classList.add('hidden');
+        document.getElementById('admin-crop-modal').classList.remove('flex');
+
+        // Save result to hidden input
+        document.getElementById(activePhotoTargetInputId).value = base64;
+
+        // Update Preview UI
+        const preview = document.getElementById(activePhotoTargetPreviewId);
+        const placeholder = document.getElementById(activePhotoTargetPlaceholderId);
+        const removeBtn = document.getElementById(activePhotoTargetRemoveBtnId);
+
+        if (preview) {
+            preview.src = base64;
+            preview.classList.remove('hidden');
+        }
+        if (placeholder) {
+            placeholder.classList.add('hidden');
+        }
+        if (removeBtn) {
+            removeBtn.classList.remove('hidden');
+        }
+    });
+};
+
+// Run initialization immediately!
+setTimeout(initAllAdminPhotoWidgets, 200);
+
 // --- 1. STAFF MANAGEMENT ---
 const CORE_STAFF_TYPES = ['Teacher', 'Management'];
 const getStaffTypeLabel = (type = '') => {
@@ -1138,7 +1386,11 @@ document.getElementById('add-staff-btn').addEventListener('click', async () => {
     await syncStaffAccessRecord(staffRecord);
     await logAuditEvent({ category: 'security', action: 'staff.create', entityType: 'staff', entityId: staffDoc.id, message: `Staff added: ${name}.` });
     alert("Staff Added Successfully!");
-    ['st-name', 'st-role', 'st-phone', 'st-email', 'st-password', 'st-msr', 'st-address', 'st-photo'].forEach(id => document.getElementById(id).value = '');
+    ['st-name', 'st-role', 'st-phone', 'st-email', 'st-password', 'st-msr', 'st-address', 'st-photo'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    updateAdminPhotoWidgetPreview('', 'st-photo-preview', 'st-photo-placeholder', 'st-remove-btn', 'st-photo');
     document.getElementById('st-display-order').value = '999';
     document.getElementById('st-active').checked = true;
     document.getElementById('st-can-collect').checked = true;
@@ -1169,7 +1421,7 @@ const renderStaffList = () => {
         return String(a?.name || '').localeCompare(String(b?.name || ''));
     });
     const buildHTML = (list, isAct) => list.map((staffMember) => {
-        const safePhoto = sanitizeUrl(staffMember.photo) || 'https://via.placeholder.com/60';
+        const safePhoto = (staffMember.photo && staffMember.photo.startsWith('data:')) ? staffMember.photo : (sanitizeUrl(staffMember.photo) || 'https://via.placeholder.com/60');
         const typeLabel = getStaffTypeLabel(staffMember.type);
         return `
             <div class="flex flex-col sm:flex-row justify-between p-4 bg-white border border-gray-200 rounded-xl shadow-sm items-start sm:items-center gap-4 transition hover:shadow-md mb-2">
@@ -1233,7 +1485,8 @@ window.openEditStaff = (id) => {
     document.getElementById('e-st-role').value = s.role||''; document.getElementById('e-st-phone').value = s.phone||'';
     document.getElementById('e-st-email').value = s.email||''; document.getElementById('e-st-password').value = s.password||'';
     document.getElementById('e-st-msr').value = s.msr||'';
-    document.getElementById('e-st-photo').value = s.photo||''; document.getElementById('e-st-addr').value = s.address||'';
+    document.getElementById('e-st-addr').value = s.address||'';
+    updateAdminPhotoWidgetPreview(s.photo || '', 'e-st-photo-preview', 'e-st-photo-placeholder', 'e-st-remove-btn', 'e-st-photo');
     document.getElementById('e-st-display-order').value = Math.max(1, Number(s.displayOrder || 999));
     document.getElementById('e-st-active').checked = s.isActive;
     document.getElementById('e-st-can-collect').checked = s.canCollect !== false;
@@ -1317,7 +1570,7 @@ window.resetStaffCredentials = async (id) => {
 
 // --- 2. ADD STUDENTS ---
 window.downloadCSVTemplate = () => {
-    const csvData = "Class,ID_UID,Name,Father_Name,Gender,Status,Mobile,Adm_No,Permanent_Address\n";
+    const csvData = "Photo,Class,ID_UID,Name,Father_Name,Mother_Name,Gender,Adm_No,DOB,Adm_Date,Status,Aadhaar,Father_Phone,Mother_Phone,Permanent_Address\n";
     const blob = new Blob([csvData], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a'); a.setAttribute('hidden', ''); a.setAttribute('href', url); a.setAttribute('download', 'student_upload_template.csv');
@@ -1352,11 +1605,16 @@ function handleExcelFile(file) {
                 uid: ['iduid', 'id', 'uid', 'rollno', 'rollnumber'],
                 name: ['name', 'studentname', 'student'],
                 father: ['fathername', 'father', 'parent', 'fatherguardian'],
+                mother: ['mother', 'mothername'],
                 gender: ['gender', 'sex'],
                 status: ['status', 'state'],
-                mobile: ['mobile', 'phone', 'mobileno', 'phonenumber'],
+                mobile: ['mobile', 'phone', 'mobileno', 'phonenumber', 'fatherphone', 'fatherphonenumber'],
+                motherMobile: ['mothermobile', 'motherphone', 'motherphonenumber'],
                 adm: ['admno', 'admissionno', 'admissionnumber', 'adm', 'admn'],
-                address: ['permanentaddress', 'address', 'permanent', 'addr']
+                address: ['permanentaddress', 'address', 'permanent', 'addr'],
+                dob: ['dob', 'dateofbirth', 'birthdate', 'birth'],
+                admDate: ['admdate', 'dateofadmission', 'admissiondate'],
+                adhaar: ['aadhaar', 'adhaar', 'aadharno', 'aadhaarnumber', 'adhaarnumber']
             };
             excelParsedData = rawData.map(row => {
                 const keys = Object.keys(row);
@@ -1365,17 +1623,41 @@ function handleExcelFile(file) {
                     return key ? String(row[key] ?? '').trim() : '';
                 };
                 const rawName = getVal(aliasMap.name);
+                const dobVal = getVal(aliasMap.dob);
+                const admDateVal = getVal(aliasMap.admDate);
+                const adhaarVal = getVal(aliasMap.adhaar);
+                const motherVal = getVal(aliasMap.mother);
+                const motherMobileVal = getVal(aliasMap.motherMobile);
                 return {
                     academicYear: activeAcademicYear || currentAcademicYear,
                     name: rawName ? rawName.toUpperCase().trim() : "",
                     class: selectedBulkClass,
+                    studentClass: selectedBulkClass,
                     status: normalizeStudentStatus(getVal(aliasMap.status)),
                     gender: getVal(aliasMap.gender).toLowerCase().startsWith('f') ? 'Female' : 'Male',
                     uid: getVal(aliasMap.uid),
                     father: getVal(aliasMap.father).toUpperCase().trim(),
+                    mother: motherVal.toUpperCase().trim(),
                     mobile: getVal(aliasMap.mobile),
+                    motherMobile: motherMobileVal,
                     adm: getVal(aliasMap.adm).toUpperCase().trim(),
-                    address: getVal(aliasMap.address).trim()
+                    address: getVal(aliasMap.address).trim(),
+                    photo: '',
+                    profile: {
+                        dob: dobVal,
+                        address: getVal(aliasMap.address).trim(),
+                        adhaar: adhaarVal,
+                        admNo: getVal(aliasMap.adm).toUpperCase().trim(),
+                        admDate: admDateVal,
+                        samasthaId: '',
+                        photo: '',
+                        uid: getVal(aliasMap.uid),
+                        father: getVal(aliasMap.father).toUpperCase().trim(),
+                        mother: motherVal.toUpperCase().trim(),
+                        mobile: getVal(aliasMap.mobile),
+                        motherMobile: motherMobileVal,
+                        status: normalizeStudentStatus(getVal(aliasMap.status))
+                    }
                 };
             }).filter(s => s.name);
 
@@ -1437,15 +1719,57 @@ document.getElementById('add-manual-btn').addEventListener('click', async () => 
     if(!cls || !name || !gender) return alert("Class, Name and Gender are mandatory.");
     if(!confirm("വിദ്യാർത്ഥിയെ ആഡ് ചെയ്യട്ടെ?")) return;
 
-    const nextStudent = { academicYear: activeAcademicYear || currentAcademicYear, class: cls, name: name, gender: gender, status: normalizeStudentStatus(document.getElementById('add-stu-status').value), uid: document.getElementById('add-stu-uid').value.trim(), adm: document.getElementById('add-stu-adm').value.toUpperCase().trim(), mobile: document.getElementById('add-stu-mobile').value.trim(), father: document.getElementById('add-stu-father').value.toUpperCase().trim(), address: document.getElementById('add-stu-address').value.trim() };
+    const photoVal = document.getElementById('add-stu-photo').value.trim();
+    const dobVal = document.getElementById('add-stu-dob').value;
+    const admDateVal = document.getElementById('add-stu-adm-date').value;
+    const adhaarVal = document.getElementById('add-stu-adhaar').value.trim();
+    const samasthaVal = document.getElementById('add-stu-samastha').value.trim();
+
+    const nextStudent = {
+        academicYear: activeAcademicYear || currentAcademicYear,
+        class: cls,
+        studentClass: cls, // Save both for compatibility with React
+        name: name,
+        gender: gender,
+        status: normalizeStudentStatus(document.getElementById('add-stu-status').value),
+        uid: document.getElementById('add-stu-uid').value.trim(),
+        adm: document.getElementById('add-stu-adm').value.toUpperCase().trim(),
+        mobile: document.getElementById('add-stu-mobile').value.trim(),
+        father: document.getElementById('add-stu-father').value.toUpperCase().trim(),
+        mother: document.getElementById('add-stu-mother').value.toUpperCase().trim(),
+        motherMobile: document.getElementById('add-stu-mother-mobile').value.trim(),
+        address: document.getElementById('add-stu-address').value.trim(),
+        photo: photoVal,
+        profile: {
+            dob: dobVal,
+            address: document.getElementById('add-stu-address').value.trim(),
+            adhaar: adhaarVal,
+            admNo: document.getElementById('add-stu-adm').value.toUpperCase().trim(),
+            admDate: admDateVal,
+            samasthaId: samasthaVal,
+            photo: photoVal,
+            uid: document.getElementById('add-stu-uid').value.trim(),
+            father: document.getElementById('add-stu-father').value.toUpperCase().trim(),
+            mother: document.getElementById('add-stu-mother').value.toUpperCase().trim(),
+            mobile: document.getElementById('add-stu-mobile').value.trim(),
+            motherMobile: document.getElementById('add-stu-mother-mobile').value.trim(),
+            status: normalizeStudentStatus(document.getElementById('add-stu-status').value)
+        }
+    };
     const duplicateStudent = students.find((student) => student.class === cls && student.name === name && (student.adm || '') === nextStudent.adm && (student.uid || '') === nextStudent.uid);
     if (duplicateStudent) return alert('A matching student already exists in this academic year.');
     document.getElementById('add-manual-btn').disabled = true;
     const studentDoc = await addDoc(collection(db, `${BASE_PATH}/students`), nextStudent);
     await syncEnrollmentRecord(studentDoc.id, nextStudent);
+    await setDoc(doc(db, `${BASE_PATH}/studentPhotoSubmissions`, studentDoc.id), { photo: photoVal, updatedAt: Date.now() }, { merge: true });
     await syncActiveAcademicYearClasses([cls]);
     await logAuditEvent({ category: 'student', action: 'student.create', entityType: 'student', entityId: studentDoc.id, message: `Student added: ${name}.` });
-    alert("Student Added!"); ['add-stu-class','add-stu-uid','add-stu-name','add-stu-father','add-stu-mobile','add-stu-adm','add-stu-address'].forEach(id => document.getElementById(id).value = '');
+    alert("Student Added!");
+    ['add-stu-class','add-stu-uid','add-stu-name','add-stu-father','add-stu-mother','add-stu-mobile','add-stu-mother-mobile','add-stu-adm','add-stu-address','add-stu-photo', 'add-stu-dob', 'add-stu-adm-date', 'add-stu-adhaar', 'add-stu-samastha'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    updateAdminPhotoWidgetPreview('', 'add-stu-photo-preview', 'add-stu-photo-placeholder', 'add-stu-remove-btn', 'add-stu-photo');
     document.getElementById('add-stu-status').value = 'Active';
     document.getElementById('add-manual-btn').disabled = false;
 });
@@ -1520,14 +1844,20 @@ const renderStudentList = () => {
     let html = `
     <table class="w-full text-sm text-left whitespace-nowrap">
         <thead class="table-header">
-            <tr><th class="p-3 w-16 text-center">Sl. No</th><th class="p-3">Adm.No</th><th class="p-3">Name</th><th class="p-3">Class, Gender & Status</th><th class="p-3">Mobile</th><th class="p-3 text-right">Actions</th></tr>
+            <tr><th class="p-3 w-16 text-center">Sl. No</th><th class="p-3 w-16">Photo</th><th class="p-3">Adm.No</th><th class="p-3">Name</th><th class="p-3">Class, Gender & Status</th><th class="p-3">Mobile</th><th class="p-3 text-right">Actions</th></tr>
         </thead><tbody class="divide-y divide-gray-200">`;
 
     fil.forEach((s, i) => {
         const status = normalizeStudentStatus(s.status);
+        const stuPhoto = s.photo || s.profile?.photo || '';
         html += `
         <tr class="hover:bg-gray-50 bg-white">
             <td class="p-3 text-center font-bold text-gray-400">${i + 1}</td>
+            <td class="p-3">
+                <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 shadow-inner">
+                    ${stuPhoto ? `<img src="${stuPhoto}" class="w-full h-full object-cover">` : `<i class="fas fa-user text-slate-400 text-sm"></i>`}
+                </div>
+            </td>
             <td class="p-3 font-mono text-gray-500 font-medium">${escapeHtml(s.adm || '-')}</td>
             <td class="p-3 font-bold text-gray-900">${escapeHtml(s.name || '-')}</td>
             <td class="p-3 text-gray-600"><div>${escapeHtml(s.class || '--')} (${escapeHtml(s.gender || '--')})</div><div class="mt-1 inline-flex px-2 py-0.5 rounded-full border text-xs font-bold ${getStudentStatusBadgeClass(status)}">${escapeHtml(status)}</div></td>
@@ -1560,11 +1890,19 @@ document.getElementById('student-list-container').addEventListener('click', e =>
         const st = students.find(s=>s.id === editBtn.dataset.id);
         if(st) {
             editingStudentId = st.id;
+            const prof = st.profile || {};
             document.getElementById('e-stu-class').value = st.class||''; document.getElementById('e-stu-gender').value = st.gender||'Male';
             document.getElementById('e-stu-name').value = st.name||''; document.getElementById('e-stu-adm').value = st.adm||'';
             document.getElementById('e-stu-mob').value = st.mobile||''; document.getElementById('e-stu-fat').value = st.father||'';
+            document.getElementById('e-stu-mother').value = st.mother||prof.mother||'';
+            document.getElementById('e-stu-mother-mobile').value = st.motherMobile||prof.motherMobile||'';
             document.getElementById('e-stu-uid').value = st.uid||''; document.getElementById('e-stu-addr').value = st.address||'';
             document.getElementById('e-stu-status').value = normalizeStudentStatus(st.status);
+            document.getElementById('e-stu-dob').value = prof.dob || '';
+            document.getElementById('e-stu-adm-date').value = prof.admDate || '';
+            document.getElementById('e-stu-adhaar').value = prof.adhaar || '';
+            document.getElementById('e-stu-samastha').value = prof.samasthaId || '';
+            updateAdminPhotoWidgetPreview(st.photo || st.profile?.photo || '', 'e-stu-photo-preview', 'e-stu-photo-placeholder', 'e-stu-remove-btn', 'e-stu-photo');
             document.getElementById('edit-student-popup').classList.remove('hidden'); document.getElementById('edit-student-popup').classList.add('flex');
         }
     }
@@ -1573,9 +1911,45 @@ document.getElementById('edit-student-update').addEventListener('click', async (
     if(!requirePermission('students.manage')) return;
     if(!confirm("വിദ്യാർത്ഥിയുടെ വിവരങ്ങൾ അപ്ഡേറ്റ് ചെയ്യട്ടെ?")) return;
     const updatedClass = document.getElementById('e-stu-class').value.toUpperCase().trim();
-    const updatedPayload = { name: document.getElementById('e-stu-name').value.toUpperCase().trim(), class: updatedClass, gender: document.getElementById('e-stu-gender').value, status: normalizeStudentStatus(document.getElementById('e-stu-status').value), adm: document.getElementById('e-stu-adm').value.toUpperCase().trim(), mobile: document.getElementById('e-stu-mob').value.trim(), father: document.getElementById('e-stu-fat').value.toUpperCase().trim(), uid: document.getElementById('e-stu-uid').value.trim(), address: document.getElementById('e-stu-addr').value.trim() };
-    await updateDoc(doc(db, `${BASE_PATH}/students`, editingStudentId), updatedPayload);
+    const photoVal = document.getElementById('e-stu-photo').value.trim();
+    const dobVal = document.getElementById('e-stu-dob').value;
+    const admDateVal = document.getElementById('e-stu-adm-date').value;
+    const adhaarVal = document.getElementById('e-stu-adhaar').value.trim();
+    const samasthaVal = document.getElementById('e-stu-samastha').value.trim();
+
     const existingStudent = rawStudents.find((student) => student.id === editingStudentId) || {};
+    const updatedPayload = { 
+        name: document.getElementById('e-stu-name').value.toUpperCase().trim(), 
+        class: updatedClass, 
+        studentClass: updatedClass, // Save both for compatibility with React
+        gender: document.getElementById('e-stu-gender').value, 
+        status: normalizeStudentStatus(document.getElementById('e-stu-status').value), 
+        adm: document.getElementById('e-stu-adm').value.toUpperCase().trim(), 
+        mobile: document.getElementById('e-stu-mob').value.trim(), 
+        father: document.getElementById('e-stu-fat').value.toUpperCase().trim(), 
+        mother: document.getElementById('e-stu-mother').value.toUpperCase().trim(),
+        motherMobile: document.getElementById('e-stu-mother-mobile').value.trim(),
+        uid: document.getElementById('e-stu-uid').value.trim(), 
+        address: document.getElementById('e-stu-addr').value.trim(),
+        photo: photoVal,
+        profile: {
+            dob: dobVal,
+            address: document.getElementById('e-stu-addr').value.trim(),
+            adhaar: adhaarVal,
+            admNo: document.getElementById('e-stu-adm').value.toUpperCase().trim(),
+            admDate: admDateVal,
+            samasthaId: samasthaVal,
+            photo: photoVal,
+            uid: document.getElementById('e-stu-uid').value.trim(),
+            father: document.getElementById('e-stu-fat').value.toUpperCase().trim(),
+            mother: document.getElementById('e-stu-mother').value.toUpperCase().trim(),
+            mobile: document.getElementById('e-stu-mob').value.trim(),
+            motherMobile: document.getElementById('e-stu-mother-mobile').value.trim(),
+            status: normalizeStudentStatus(document.getElementById('e-stu-status').value)
+        }
+    };
+    await updateDoc(doc(db, `${BASE_PATH}/students`, editingStudentId), updatedPayload);
+    await setDoc(doc(db, `${BASE_PATH}/studentPhotoSubmissions`, editingStudentId), { photo: photoVal, updatedAt: Date.now() }, { merge: true });
     await syncEnrollmentRecord(editingStudentId, { ...existingStudent, ...updatedPayload });
     await syncActiveAcademicYearClasses([updatedClass]);
     await logAuditEvent({ category: 'student', action: 'student.update', entityType: 'student', entityId: editingStudentId, message: 'Student record updated.' });
@@ -1621,20 +1995,27 @@ const getManagedStudentsForExport = () => {
     }
     return filtered;
 };
-const buildStudentExportRows = () => getManagedStudentsForExport().map((student, index) => ({
-    'Sl. No': index + 1,
-    'Academic Year': student.academicYear || activeAcademicYear || currentAcademicYear,
-    'Class': student.class || '',
-    'Adm No': student.adm || '',
-    'Name': student.name || '',
-    'Gender': student.gender || '',
-    'Status': normalizeStudentStatus(student.status),
-    'Mobile': student.mobile || '',
-    'UID': student.uid || '',
-    'Father Name': student.father || '',
-    'Address': student.address || '',
-    'Concession Fee': student.concessionFee ?? ''
-}));
+const buildStudentExportRows = () => getManagedStudentsForExport().map((student, index) => {
+    const prof = student.profile || {};
+    return {
+        'Sl. No': index + 1,
+        'Photo': student.photo ? 'Yes' : 'No',
+        'Class': student.class || '',
+        'ID/UID': student.uid || '',
+        'Student Name': student.name || '',
+        "Father's Name": student.father || '',
+        "Mother's Name": student.mother || prof.mother || '',
+        'Gender': student.gender || '',
+        'Admission Number (Adm. No.)': student.adm || '',
+        'Date of Birth': prof.dob || '',
+        'Date of Admission': prof.admDate || '',
+        'Student Status': normalizeStudentStatus(student.status),
+        'Aadhaar Number': prof.adhaar || '',
+        "Father's Phone Number": student.mobile || '',
+        "Mother's Phone Number": student.motherMobile || prof.motherMobile || '',
+        'Permanent Address': student.address || ''
+    };
+});
 const exportStudentsToExcel = () => {
     const exportRows = buildStudentExportRows();
     if (exportRows.length === 0) {
@@ -1644,8 +2025,9 @@ const exportStudentsToExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(exportRows);
     const workbook = XLSX.utils.book_new();
     worksheet['!cols'] = [
-        { wch: 8 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 28 }, { wch: 10 },
-        { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 24 }, { wch: 32 }, { wch: 14 }
+        { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 28 }, { wch: 20 },
+        { wch: 20 }, { wch: 10 }, { wch: 24 }, { wch: 14 }, { wch: 14 }, { wch: 12 },
+        { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 32 }
     ];
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
     XLSX.writeFile(workbook, `students-export-${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -1678,7 +2060,15 @@ const exportStudentsToPDF = () => {
     docPdf.autoTable({
         startY: 20,
         head: [['Sl. No', 'Class', 'Adm No', 'Name', 'Gender', 'Status', 'Mobile']],
-        body: exportRows.map((row) => [row['Sl. No'], row['Class'], row['Adm No'], row['Name'], row['Gender'], row['Status'], row['Mobile']]),
+        body: exportRows.map((row) => [
+            row['Sl. No'],
+            row['Class'],
+            row['Admission Number (Adm. No.)'] || '',
+            row['Student Name'] || '',
+            row['Gender'] || '',
+            row['Student Status'] || '',
+            row["Father's Phone Number"] || ''
+        ]),
         styles: { fontSize: 8, cellPadding: 2 },
         headStyles: { fillColor: [37, 99, 235] }
     });
@@ -3590,6 +3980,25 @@ const renderDirectoryEntryForm = () => {
     const authConfig = getCategoryAuthItem(categoryId);
     const fieldsHtml = sortedFields.map((field) => {
         const base = `data-dir-field="${field.key}"`;
+        if (field.key === 'photo') {
+            return `
+            <div class="md:col-span-2 flex flex-col sm:flex-row gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100 items-center w-full">
+                <div class="relative w-16 h-16 rounded-full border-2 border-slate-200 overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 shadow-inner">
+                    <img id="dir-photo-preview" class="w-full h-full object-cover hidden" alt="Photo Preview">
+                    <i id="dir-photo-placeholder" class="fas fa-user text-2xl text-slate-400"></i>
+                </div>
+                <div class="flex-1 text-center sm:text-left space-y-1.5 w-full">
+                    <label class="block text-xs font-black text-slate-700">${escapeHtml(field.label)} (Max 50KB)</label>
+                    <div class="flex flex-wrap gap-1.5 justify-center sm:justify-start">
+                        <button type="button" id="dir-camera-btn" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-md font-bold text-[10px] flex items-center gap-1 shadow-sm transition-all"><i class="fas fa-camera"></i> Camera</button>
+                        <button type="button" id="dir-upload-btn" class="px-2.5 py-1 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-md font-bold text-[10px] flex items-center gap-1 shadow-sm transition-all"><i class="fas fa-upload"></i> Upload</button>
+                        <button type="button" id="dir-remove-btn" class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 rounded-md font-bold text-[10px] transition-all hidden">Remove</button>
+                    </div>
+                    <input type="hidden" ${base} id="dir-photo" value="">
+                    <input type="file" id="dir-file-input" accept="image/*" class="hidden">
+                </div>
+            </div>`;
+        }
         if (field.type === 'textarea') {
             return `<label class="text-sm font-semibold text-gray-700">${escapeHtml(field.label)} ${field.required ? '<span class="text-red-500">*</span>' : ''}<textarea ${base} class="w-full mt-1 p-2 border rounded-lg" rows="3"></textarea></label>`;
         }
@@ -3600,6 +4009,10 @@ const renderDirectoryEntryForm = () => {
            <label class="text-sm font-semibold text-gray-700">Password <span class="text-red-500">*</span><input data-dir-manual-password type="password" class="w-full mt-1 p-2 border rounded-lg"></label>`
         : '';
     form.innerHTML = (fieldsHtml || '<p class="text-sm text-gray-500 italic">Add fields for this category first.</p>') + manualAuthHtml;
+
+    if (sortedFields.some(f => f.key === 'photo')) {
+        setupAdminPhotoWidget('dir-photo', 'dir-photo-preview', 'dir-photo-placeholder', 'dir-remove-btn', 'dir-file-input', 'dir-camera-btn', 'dir-upload-btn');
+    }
 };
 const renderDirectoryEntries = () => {
     const categoryId = document.getElementById('dir-entry-category')?.value || '';
@@ -3620,7 +4033,8 @@ const renderDirectoryEntries = () => {
     list.innerHTML = rows.length
         ? `<h3 class="text-sm font-bold text-cyan-800 border-b border-cyan-200 pb-2 mb-2">Active ${escapeHtml(category.name || 'Category')}</h3>` + rows.map((entry) => {
             const displayName = String(entry.values?.name || 'Profile');
-            const photoUrl = sanitizeUrl(String(entry.values?.photo || entry.values?.image || ''));
+            const rawPhoto = String(entry.values?.photo || entry.values?.image || '');
+            const photoUrl = (rawPhoto && rawPhoto.startsWith('data:')) ? rawPhoto : sanitizeUrl(rawPhoto);
             const avatar = photoUrl
                 ? `<img src="${photoUrl}" alt="${escapeHtml(displayName)}" class="w-14 h-14 rounded-full object-cover border-2 border-cyan-100">`
                 : `<div class="w-14 h-14 rounded-full bg-cyan-100 text-cyan-700 font-bold flex items-center justify-center">${escapeHtml(displayName.charAt(0).toUpperCase())}</div>`;
@@ -3869,11 +4283,34 @@ document.getElementById('dir-entries-list')?.addEventListener('click', (event) =
     const host = document.getElementById('dir-entry-edit-form');
     host.innerHTML = category.fields.map((field) => {
         const value = String(entry.values?.[field.key] ?? '');
+        if (field.key === 'photo') {
+            return `
+            <div class="md:col-span-2 flex flex-col sm:flex-row gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100 items-center w-full">
+                <div class="relative w-16 h-16 rounded-full border-2 border-slate-200 overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 shadow-inner">
+                    <img id="e-dir-photo-preview" class="w-full h-full object-cover ${value ? '' : 'hidden'}" src="${value || ''}" alt="Photo Preview">
+                    <i id="e-dir-photo-placeholder" class="fas fa-user text-2xl text-slate-400 ${value ? 'hidden' : ''}"></i>
+                </div>
+                <div class="flex-1 text-center sm:text-left space-y-1.5 w-full">
+                    <label class="block text-xs font-black text-slate-700">${escapeHtml(field.label)} (Max 50KB)</label>
+                    <div class="flex flex-wrap gap-1.5 justify-center sm:justify-start">
+                        <button type="button" id="e-dir-camera-btn" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-md font-bold text-[10px] flex items-center gap-1 shadow-sm transition-all"><i class="fas fa-camera"></i> Camera</button>
+                        <button type="button" id="e-dir-upload-btn" class="px-2.5 py-1 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-md font-bold text-[10px] flex items-center gap-1 shadow-sm transition-all"><i class="fas fa-upload"></i> Upload</button>
+                        <button type="button" id="e-dir-remove-btn" class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 rounded-md font-bold text-[10px] transition-all ${value ? '' : 'hidden'}">Remove</button>
+                    </div>
+                    <input type="hidden" class="dir-entry-popup-field" data-key="photo" data-type="text" id="e-dir-photo" value="${escapeHtml(value)}">
+                    <input type="file" id="e-dir-file-input" accept="image/*" class="hidden">
+                </div>
+            </div>`;
+        }
         if (field.type === 'textarea') {
             return `<label class="text-sm font-semibold text-gray-700 md:col-span-2">${escapeHtml(field.label)} ${field.required ? '<span class="text-red-500">*</span>' : ''}<textarea class="w-full mt-1 p-2 border rounded-lg dir-entry-popup-field" rows="3" data-key="${field.key}" data-type="${field.type}">${escapeHtml(value)}</textarea></label>`;
         }
         return `<label class="text-sm font-semibold text-gray-700">${escapeHtml(field.label)} ${field.required ? '<span class="text-red-500">*</span>' : ''}<input type="${escapeHtml(field.type || 'text')}" class="w-full mt-1 p-2 border rounded-lg dir-entry-popup-field" data-key="${field.key}" data-type="${field.type}" value="${escapeHtml(value)}"></label>`;
     }).join('');
+
+    if (category.fields.some(f => f.key === 'photo')) {
+        setupAdminPhotoWidget('e-dir-photo', 'e-dir-photo-preview', 'e-dir-photo-placeholder', 'e-dir-remove-btn', 'e-dir-file-input', 'e-dir-camera-btn', 'e-dir-upload-btn');
+    }
     document.getElementById('dir-entry-edit-popup')?.classList.remove('hidden');
     document.getElementById('dir-entry-edit-popup')?.classList.add('flex');
 });

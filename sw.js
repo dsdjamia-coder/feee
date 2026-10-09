@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fee-tracker-v11';
+const CACHE_NAME = 'fee-tracker-v12';
 const IMAGE_CACHE_NAME = 'fee-tracker-images-v1';
 const ASSETS_TO_CACHE = [
   './',
@@ -33,28 +33,13 @@ const isSensitiveRequest = (url) => SENSITIVE_ROUTE_SUFFIXES.some((suffix) => ur
 const isSameOrigin = (url) => url.origin === self.location.origin;
 
 self.addEventListener('install', (event) => {
-  event.waitUntil((async () => {
-    self.skipWaiting();
-    const cache = await caches.open(CACHE_NAME);
-    let loadedBytes = 0;
-    let totalBytes = 0;
-    const clientList = await self.clients.matchAll({ includeUncontrolled: true });
-    for (const asset of ASSETS_TO_CACHE) {
-      try {
-        const response = await fetch(asset, { cache: 'no-cache' });
-        if (response && response.ok) {
-          const size = Number(response.headers.get('content-length') || 0);
-          totalBytes += size;
-          loadedBytes += size;
-          await cache.put(asset, response.clone());
-          clientList.forEach((client) => client.postMessage({ type: 'SW_INSTALL_PROGRESS', loaded: loadedBytes, total: totalBytes }));
-        }
-      } catch (error) {
-        // Ignore single asset fetch failure; existing cache/network fallback remains active.
-      }
-    }
-    clientList.forEach((client) => client.postMessage({ type: 'SW_UPDATE_READY' }));
-  })());
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS_TO_CACHE);
+    }).then(() => {
+      return self.skipWaiting();
+    })
+  );
 });
 
 self.addEventListener('activate', (event) => {

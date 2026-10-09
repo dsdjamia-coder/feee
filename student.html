@@ -86,17 +86,33 @@
                     <p class="text-xs opacity-80" id="id-school-sub">Excellence in Education</p>
                 </div>
                 <div class="id-avatar-wrapper">
-                    <div class="id-avatar" id="dash-avatar"><i class="fas fa-user"></i></div>
+                    <div class="id-avatar relative cursor-pointer hover:opacity-90 overflow-hidden" id="dash-avatar" onclick="if(document.getElementById('student-photo-controls') && !document.getElementById('student-photo-controls').classList.contains('hidden')) document.getElementById('student-photo-file-input').click()"><i class="fas fa-user"></i></div>
                 </div>
-                <h2 class="id-name" id="dash-name">-</h2>
+                <!-- Photo edit controls placed outside the avatar wrapper to prevent overlapping -->
+                <div class="flex justify-center gap-2 mt-6 mb-4" id="student-photo-controls">
+                    <button type="button" id="student-photo-upload-btn" class="text-[10px] bg-slate-50 hover:bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200 font-bold transition flex items-center gap-1 shadow-xs" onclick="document.getElementById('student-photo-file-input').click()"><i class="fas fa-upload"></i> Upload</button>
+                    <button type="button" id="student-photo-camera-btn" class="text-[10px] bg-slate-50 hover:bg-slate-100 text-slate-700 px-2.5 py-1 rounded border border-slate-200 font-bold transition flex items-center gap-1 shadow-xs"><i class="fas fa-camera"></i> Camera</button>
+                </div>
+                <input type="file" id="student-photo-file-input" accept="image/*" class="hidden">
+                <div class="flex items-center justify-center gap-2">
+                    <h2 class="id-name" id="dash-name">-</h2>
+                    <button type="button" id="student-edit-details-btn" class="text-blue-600 hover:text-blue-800 transition p-1 text-sm hidden" title="Edit Profile Details"><i class="fas fa-pencil-alt"></i></button>
+                </div>
                 <div class="id-class" id="dash-class">Class: -</div>
                 
                 <div class="id-details">
                     <div class="id-info-group"><div class="id-label">Adm No</div><div class="id-value" id="dash-adm">-</div></div>
+                    <div class="id-info-group"><div class="id-label">UID / ID</div><div class="id-value" id="dash-uid">-</div></div>
                     <div class="id-info-group"><div class="id-label">Gender</div><div class="id-value" id="dash-gender">-</div></div>
-                    <div class="id-info-group"><div class="id-label">UID No</div><div class="id-value" id="dash-uid">-</div></div>
                     <div class="id-info-group"><div class="id-label">Father's Name</div><div class="id-value" id="dash-father">-</div></div>
-                    <div class="id-info-group"><div class="id-label">Contact</div><div class="id-value" id="dash-mobile">-</div></div>
+                    <div class="id-info-group"><div class="id-label">Mother's Name</div><div class="id-value" id="dash-mother">-</div></div>
+                    <div class="id-info-group"><div class="id-label">Father's Phone</div><div class="id-value" id="dash-mobile">-</div></div>
+                    <div class="id-info-group"><div class="id-label">Mother's Phone</div><div class="id-value" id="dash-mother-mobile">-</div></div>
+                    <div class="id-info-group"><div class="id-label">Date of Birth</div><div class="id-value" id="dash-dob">-</div></div>
+                    <div class="id-info-group"><div class="id-label">Admission Date</div><div class="id-value" id="dash-adm-date">-</div></div>
+                    <div class="id-info-group"><div class="id-label">Aadhaar Number</div><div class="id-value" id="dash-adhaar">-</div></div>
+                    <div class="id-info-group"><div class="id-label">Student Status</div><div class="id-value" id="dash-status">-</div></div>
+                    
                     <!-- Dynamically Hidden/Shown Concession Box -->
                     <div class="id-info-group hidden" id="dash-conc-group" style="background: #ecfdf5; border-color: #a7f3d0;"><div class="id-label" style="color: #047857;">Fee Concession</div><div class="id-value" style="color: #059669;" id="dash-conc"></div></div>
                     <!-- Address Info -->
@@ -214,6 +230,102 @@
             <div id="footer-updated">Last Updated: --</div>
         </div>
     </footer>
+
+    <!-- Student Camera Modal -->
+    <div id="student-camera-modal" class="fixed inset-0 bg-black/95 hidden items-center justify-center z-[10001] p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden p-5 space-y-4">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-gray-800 text-sm">Take Photo</h3>
+                <button type="button" id="student-camera-close-btn" class="text-gray-500 hover:text-gray-700 text-xl font-bold">&times;</button>
+            </div>
+            <div class="relative aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center">
+                <video id="student-camera-video" class="w-full h-full object-cover" playsinline muted></video>
+            </div>
+            <div class="flex justify-end gap-2 border-t pt-3">
+                <button type="button" id="student-camera-cancel-btn" class="px-4 py-2 border rounded text-xs font-bold text-gray-600">Close</button>
+                <button type="button" id="student-camera-capture-btn" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow-md flex items-center gap-1">
+                    <i class="fas fa-camera"></i> Capture
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Crop Modal -->
+    <div id="student-crop-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[10001] p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden p-5 space-y-4">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-gray-800 text-sm">Crop Photo</h3>
+                <button type="button" id="student-crop-close-btn" class="text-gray-500 hover:text-gray-700 text-xl font-bold">&times;</button>
+            </div>
+            <div class="flex flex-col items-center justify-center">
+                <div class="w-[150px] h-[150px] border-2 border-dashed border-blue-500 rounded-full overflow-hidden shadow-inner bg-gray-50">
+                    <canvas id="student-crop-canvas" width="150" height="150" class="w-full h-full"></canvas>
+                </div>
+                <span class="text-xs text-gray-400 mt-2">Adjust zoom & position</span>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs font-bold text-gray-600 flex justify-between">
+                        <span>Zoom</span>
+                        <span id="student-zoom-label">1.0x</span>
+                    </label>
+                    <input type="range" id="student-crop-zoom" min="1" max="4" step="0.1" value="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600">Move Left / Right</label>
+                    <input type="range" id="student-crop-panx" min="-100" max="100" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600">Move Up / Down</label>
+                    <input type="range" id="student-crop-pany" min="-100" max="100" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 border-t pt-3">
+                <button type="button" id="student-crop-cancel-btn" class="px-4 py-2 border rounded text-xs font-bold text-gray-600">Cancel</button>
+                <button type="button" id="student-crop-save-btn" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow-md">Apply Crop</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Edit Details Modal -->
+    <div id="student-edit-details-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[10001] p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden p-5 space-y-4">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-gray-800 text-sm">Edit Profile Details</h3>
+                <button type="button" id="student-edit-details-close-btn" class="text-gray-500 hover:text-gray-700 text-xl font-bold">&times;</button>
+            </div>
+            <div class="space-y-3 max-h-[60vh] overflow-y-auto px-1">
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Student Name</label>
+                    <input type="text" id="st-edit-name" class="w-full p-2 border rounded font-semibold uppercase text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Father's Name</label>
+                    <input type="text" id="st-edit-father" class="w-full p-2 border rounded uppercase text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Mother's Name</label>
+                    <input type="text" id="st-edit-mother" class="w-full p-2 border rounded uppercase text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Father's Phone Number</label>
+                    <input type="tel" id="st-edit-father-phone" class="w-full p-2 border rounded text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Mother's Phone Number</label>
+                    <input type="tel" id="st-edit-mother-phone" class="w-full p-2 border rounded text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-600 block mb-1">Permanent Address</label>
+                    <textarea id="st-edit-address" rows="2" class="w-full p-2 border rounded text-sm"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 border-t pt-3">
+                <button type="button" id="student-edit-details-cancel-btn" class="px-4 py-2 border rounded text-xs font-bold text-gray-600">Cancel</button>
+                <button type="button" id="student-edit-details-save-btn" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow-md">Save Changes</button>
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="scripts/pages/student-page.js"></script>
 </body>

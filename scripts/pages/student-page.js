@@ -1257,6 +1257,203 @@ window.AppSession?.guardStudentPage?.();
                 if (container) container.innerHTML = buildEmptyState('Unable to load results. Please refresh and try again.', 'fa-exclamation-triangle');
             }
         };
+        let activeCropImg = null;
+        let cropZoom = 1;
+        let cropPanX = 0;
+        let cropPanY = 0;
+        let cameraStream = null;
+
+        const drawStudentCropCanvas = () => {
+            const canvas = document.getElementById('student-crop-canvas');
+            if (!canvas || !activeCropImg) return;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 150, 150);
+
+            const drawWidth = 150 * cropZoom;
+            const drawHeight = (activeCropImg.height / activeCropImg.width) * drawWidth;
+
+            const xOffset = (150 - drawWidth) / 2 + (cropPanX * drawWidth / 100);
+            const yOffset = (150 - drawHeight) / 2 + (cropPanY * drawHeight / 100);
+
+            ctx.drawImage(activeCropImg, xOffset, yOffset, drawWidth, drawHeight);
+        };
+
+        const setupStudentPhotoActions = () => {
+            const fileInput = document.getElementById('student-photo-file-input');
+            const cameraBtn = document.getElementById('student-photo-camera-btn');
+            
+            if (fileInput) {
+                fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            const img = new Image();
+                            img.onload = () => {
+                                activeCropImg = img;
+                                cropZoom = 1;
+                                cropPanX = 0;
+                                cropPanY = 0;
+                                document.getElementById('student-crop-zoom').value = 1;
+                                document.getElementById('student-crop-panx').value = 0;
+                                document.getElementById('student-crop-pany').value = 0;
+                                document.getElementById('student-zoom-label').textContent = '1.0x';
+                                document.getElementById('student-crop-modal').classList.remove('hidden');
+                                document.getElementById('student-crop-modal').classList.add('flex');
+                                drawStudentCropCanvas();
+                            };
+                            img.src = reader.result;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+
+            if (cameraBtn) {
+                cameraBtn.addEventListener('click', async () => {
+                    const modal = document.getElementById('student-camera-modal');
+                    const video = document.getElementById('student-camera-video');
+                    try {
+                        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                        video.srcObject = cameraStream;
+                        video.play();
+                        modal.classList.remove('hidden');
+                        modal.classList.add('flex');
+                    } catch (err) {
+                        console.error('Camera access error:', err);
+                        alert('ക്യാമറ ആക്സസ് ചെയ്യാൻ കഴിഞ്ഞില്ല. ദയവായി ക്യാമറ പെർമിഷൻ അനുവദിക്കുക.');
+                    }
+                });
+            }
+
+            // Camera control button bindings
+            document.getElementById('student-camera-close-btn')?.addEventListener('click', stopStudentCamera);
+            document.getElementById('student-camera-cancel-btn')?.addEventListener('click', stopStudentCamera);
+            document.getElementById('student-camera-capture-btn')?.addEventListener('click', () => {
+                const video = document.getElementById('student-camera-video');
+                if (!video) return;
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                stopStudentCamera();
+
+                const img = new Image();
+                img.onload = () => {
+                    activeCropImg = img;
+                    cropZoom = 1;
+                    cropPanX = 0;
+                    cropPanY = 0;
+                    document.getElementById('student-crop-zoom').value = 1;
+                    document.getElementById('student-crop-panx').value = 0;
+                    document.getElementById('student-crop-pany').value = 0;
+                    document.getElementById('student-zoom-label').textContent = '1.0x';
+                    document.getElementById('student-crop-modal').classList.remove('hidden');
+                    document.getElementById('student-crop-modal').classList.add('flex');
+                    drawStudentCropCanvas();
+                };
+                img.src = canvas.toDataURL('image/jpeg');
+            });
+
+            // Crop modal control bindings
+            document.getElementById('student-crop-close-btn')?.addEventListener('click', () => {
+                document.getElementById('student-crop-modal').classList.add('hidden');
+                document.getElementById('student-crop-modal').classList.remove('flex');
+            });
+            document.getElementById('student-crop-cancel-btn')?.addEventListener('click', () => {
+                document.getElementById('student-crop-modal').classList.add('hidden');
+                document.getElementById('student-crop-modal').classList.remove('flex');
+            });
+
+            const zoomInput = document.getElementById('student-crop-zoom');
+            const panXInput = document.getElementById('student-crop-panx');
+            const panYInput = document.getElementById('student-crop-pany');
+
+            zoomInput?.addEventListener('input', (e) => {
+                cropZoom = parseFloat(e.target.value);
+                document.getElementById('student-zoom-label').textContent = cropZoom.toFixed(1) + 'x';
+                drawStudentCropCanvas();
+            });
+            panXInput?.addEventListener('input', (e) => {
+                cropPanX = parseInt(e.target.value);
+                drawStudentCropCanvas();
+            });
+            panYInput?.addEventListener('input', (e) => {
+                cropPanY = parseInt(e.target.value);
+                drawStudentCropCanvas();
+            });
+
+            document.getElementById('student-crop-save-btn')?.addEventListener('click', async () => {
+                const canvas = document.getElementById('student-crop-canvas');
+                if (!canvas) return;
+                let quality = 0.9;
+                let base64 = canvas.toDataURL('image/jpeg', quality);
+
+                // Compress base64 size to strictly under 50KB (approx 50 * 1024 bytes)
+                while (base64.length * 0.75 > 50 * 1024 && quality > 0.1) {
+                    quality -= 0.1;
+                    base64 = canvas.toDataURL('image/jpeg', quality);
+                }
+
+                // If still over 50KB, scale down resolution iteratively
+                let currentWidth = 150;
+                let currentHeight = 150;
+                while (base64.length * 0.75 > 50 * 1024 && currentWidth > 60) {
+                    currentWidth -= 15;
+                    currentHeight -= 15;
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = currentWidth;
+                    tempCanvas.height = currentHeight;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+                    base64 = tempCanvas.toDataURL('image/jpeg', 0.6);
+                }
+
+                document.getElementById('student-crop-modal').classList.add('hidden');
+                document.getElementById('student-crop-modal').classList.remove('flex');
+
+                // Render updated image on UI immediately
+                document.getElementById('dash-avatar').innerHTML = `<img src="${base64}" class="w-full h-full object-cover rounded-full animate-pulse" alt="Profile Photo">`;
+
+                try {
+                    // Save under student document in 'students' collection
+                    const studentDocRef = doc(db, `${BASE_PATH}/students`, studentId);
+                    const studentSnap = await getDoc(studentDocRef);
+                    if (studentSnap.exists()) {
+                        const stData = studentSnap.data();
+                        const updatedProfile = { ...(stData.profile || {}), photo: base64 };
+                        await setDoc(studentDocRef, {
+                            photo: base64,
+                            profile: updatedProfile
+                        }, { merge: true });
+                    }
+
+                    // Also save under studentPhotoSubmissions/{studentId} for redundancy
+                    await setDoc(doc(db, `${BASE_PATH}/studentPhotoSubmissions`, studentId), {
+                        photo: base64,
+                        updatedAt: Date.now()
+                    }, { merge: true });
+
+                    document.getElementById('dash-avatar').innerHTML = `<img src="${base64}" class="w-full h-full object-cover rounded-full" alt="Profile Photo">`;
+                    alert('പ്രൊഫൈൽ ഫോട്ടോ വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!');
+                } catch (err) {
+                    console.error('Failed to save student photo:', err);
+                    alert('ഫോട്ടോ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല: ' + err.message);
+                }
+            });
+        };
+
+        const stopStudentCamera = () => {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            document.getElementById('student-camera-modal').classList.add('hidden');
+            document.getElementById('student-camera-modal').classList.remove('flex');
+        };
+
         const saveStudentPhotoSubmission = async () => {};
 
         const renderStudentFeeDetails = (st, targetYear = '') => {
@@ -1504,6 +1701,29 @@ window.AppSession?.guardStudentPage?.();
                 onSnapshot(doc(db, `${BASE_PATH}/settings`, 'config'), snap => {
                     const conf = snap.exists() ? snap.data() : {};
                     
+                    const allowPhotoUpload = conf.allowStudentPhotoUpload === true;
+                    const allowDetailsEdit = conf.allowStudentDetailsEdit === true;
+
+                    const photoControls = document.getElementById('student-photo-controls');
+                    if (photoControls) {
+                        if (allowPhotoUpload) {
+                            photoControls.classList.remove('hidden');
+                            photoControls.classList.add('flex');
+                        } else {
+                            photoControls.classList.add('hidden');
+                            photoControls.classList.remove('flex');
+                        }
+                    }
+                    
+                    const editDetailsBtn = document.getElementById('student-edit-details-btn');
+                    if (editDetailsBtn) {
+                        if (allowDetailsEdit) {
+                            editDetailsBtn.classList.remove('hidden');
+                        } else {
+                            editDetailsBtn.classList.add('hidden');
+                        }
+                    }
+
                     applyInstitutionBranding(conf, {
                         defaultAppName: 'Student Dashboard',
                         primaryTitleIds: ['id-school-name'],
@@ -1643,11 +1863,23 @@ window.AppSession?.guardStudentPage?.();
                 document.getElementById('dash-uid').textContent = st.uid || '-';
                 document.getElementById('dash-gender').textContent = st.gender || '-';
                 document.getElementById('dash-father').textContent = st.father || '-';
+                document.getElementById('dash-mother').textContent = st.mother || st.profile?.mother || '-';
                 document.getElementById('dash-mobile').textContent = st.mobile || '-';
+                document.getElementById('dash-mother-mobile').textContent = st.motherMobile || st.profile?.motherMobile || '-';
+                document.getElementById('dash-dob').textContent = (st.profile?.dob ? formatDateDisplay(st.profile.dob) : '-');
+                document.getElementById('dash-adm-date').textContent = (st.profile?.admDate ? formatDateDisplay(st.profile.admDate) : '-');
+                document.getElementById('dash-adhaar').textContent = st.profile?.adhaar || '-';
+                document.getElementById('dash-status').textContent = st.status || st.profile?.status || 'Active';
                 document.getElementById('dash-addr').textContent = st.address || '-';
                 renderProfilePaymentDetails();
                 
-                if(st.name) document.getElementById('dash-avatar').textContent = st.name.charAt(0).toUpperCase();
+                const userPhoto = st.photo || st.profile?.photo || studentPhotoSubmission?.photo || '';
+                if (userPhoto) {
+                    document.getElementById('dash-avatar').innerHTML = `<img src="${userPhoto}" class="w-full h-full object-cover rounded-full" alt="Profile Photo">`;
+                } else if (st.name) {
+                    document.getElementById('dash-avatar').textContent = st.name.charAt(0).toUpperCase();
+                }
+                setupStudentPhotoActions();
                 try {
                     const paySnap = await getDocs(query(collection(db, `${BASE_PATH}/payments`), where('studentId', '==', studentId)));
                     allPayments = paySnap.docs.map(d=>d.data());

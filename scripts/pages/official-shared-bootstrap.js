@@ -119,7 +119,10 @@ import { signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword } fro
     };
     const getVisibleEntries = (obj = {}, skipKeys = []) => Object.entries(obj || {}).filter(([k, v]) => !skipKeys.includes(k) && v !== undefined && v !== null && String(valueToDisplay(v)).trim() !== '');
     const renderKeyValueGrid = (obj = {}, skipKeys = []) => renderEntriesGrid(getVisibleEntries(obj, skipKeys).map(([key, value]) => ({ key, label: toLabel(key), value })));
-    const getPhoto = (obj = {}) => sanitizeUrl(obj.photo || obj.image || obj.logo || '') || 'assets/images/logo.png';
+    const getPhoto = (obj = {}) => {
+        const rawPhoto = obj.photo || obj.image || obj.logo || '';
+        return (rawPhoto && rawPhoto.startsWith('data:')) ? rawPhoto : (sanitizeUrl(rawPhoto) || 'assets/images/logo.png');
+    };
     const getStudentClass = (student = {}) => String(student.class || '--').trim() || '--';
     const getStudentGender = (student = {}) => String(student.gender || '').trim();
     const getStudentStatus = (student = {}) => student.isActive === false || student.status === 'inactive' || student.left === true ? 'Inactive' : 'Active';

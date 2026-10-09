@@ -144,6 +144,20 @@ const activateTab = (targetId, { updateHash = true } = {}) => {
         page.classList.toggle('hidden', page.id !== safeTargetId);
     });
 
+    // Expand main container to full-width when Fee Management (React) is active
+    const mainApp = document.getElementById('app');
+    if (mainApp) {
+        if (safeTargetId === 'fee-manager-page') {
+            mainApp.style.maxWidth = '100%';
+            mainApp.style.width = '100%';
+            mainApp.style.padding = '10px';
+        } else {
+            mainApp.style.maxWidth = '';
+            mainApp.style.width = '';
+            mainApp.style.padding = '';
+        }
+    }
+
     if (updateHash) {
         const nextHash = activeLink.getAttribute('href');
         if (nextHash && window.location.hash !== nextHash) {
@@ -917,15 +931,22 @@ const buildStaffDirectoryCard = (staff = {}) => {
         ? `<div class="flex flex-wrap gap-1 mt-1">${staff.dutyClasses.map(c => `<span class="bg-gray-100 text-gray-700 text-[10px] px-1.5 py-0.5 rounded border border-gray-200">${escapeHtml(c)}</span>`).join('')}</div>`
         : '<span class="text-[10px] text-gray-400 italic">Not assigned</span>';
     const emailLine = isCurrentAdmin ? `<div class="text-[10px] text-gray-400 mt-1 truncate" title="${escapeHtml(staff.email || '--')}"><i class="fas fa-envelope mr-1"></i>${escapeHtml(staff.email || '--')}</div>` : '';
-    return `<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition relative">
-        <div class="flex justify-between items-start mb-1">
-            <div class="font-bold text-gray-800 text-sm truncate pr-2">${displayName}</div>
-            ${roleBadge}
+    const photo = staff.photo || '';
+
+    return `<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition relative flex gap-3">
+        <div class="w-12 h-12 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 shadow-inner mt-0.5">
+            ${photo ? `<img src="${photo}" class="w-full h-full object-cover">` : `<i class="fas fa-user text-slate-400 text-lg"></i>`}
         </div>
-        ${emailLine}
-        <div class="mt-3 pt-3 border-t border-gray-50">
-            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Duty Classes</div>
-            ${classLabel}
+        <div class="flex-1 min-w-0">
+            <div class="flex justify-between items-start mb-1 gap-2">
+                <div class="font-bold text-gray-800 text-sm truncate pr-2">${displayName}</div>
+                ${roleBadge}
+            </div>
+            ${emailLine}
+            <div class="mt-3 pt-3 border-t border-gray-50">
+                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Duty Classes</div>
+                ${classLabel}
+            </div>
         </div>
     </div>`;
 };
@@ -935,15 +956,22 @@ const buildDirectoryCollectorCard = (entry = {}) => {
     const roleLabel = escapeHtml(getDirectoryValue(entry, ['role', 'designation', 'type']) || categoryName);
     const phone = getDirectoryValue(entry, ['phone', 'mobile', 'contactPhone']);
     const phoneLine = phone ? `<div class="text-[10px] text-gray-500 mt-1 truncate"><i class="fas fa-phone mr-1"></i>${escapeHtml(phone)}</div>` : '';
-    return `<div class="bg-white border border-emerald-200 rounded-xl p-4 shadow-sm hover:shadow-md transition relative">
-        <div class="flex justify-between items-start mb-1">
-            <div class="font-bold text-gray-800 text-sm truncate pr-2">${displayName}</div>
-            <span class="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">${categoryName}</span>
+    const photo = getDirectoryValue(entry, ['photo', 'image', 'logo', 'img']) || '';
+
+    return `<div class="bg-white border border-emerald-200 rounded-xl p-4 shadow-sm hover:shadow-md transition relative flex gap-3">
+        <div class="w-12 h-12 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 shadow-inner mt-0.5">
+            ${photo ? `<img src="${photo}" class="w-full h-full object-cover">` : `<i class="fas fa-user text-slate-400 text-lg"></i>`}
         </div>
-        <div class="text-xs text-gray-500 font-medium">${roleLabel}</div>
-        ${phoneLine}
-        <div class="mt-3 pt-3 border-t border-gray-50">
-            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">Collection Access</span>
+        <div class="flex-1 min-w-0">
+            <div class="flex justify-between items-start mb-1 gap-2">
+                <div class="font-bold text-gray-800 text-sm truncate pr-2">${displayName}</div>
+                <span class="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">${categoryName}</span>
+            </div>
+            <div class="text-xs text-gray-500 font-medium">${roleLabel}</div>
+            ${phoneLine}
+            <div class="mt-3 pt-3 border-t border-gray-50">
+                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">Collection Access</span>
+            </div>
         </div>
     </div>`;
 };

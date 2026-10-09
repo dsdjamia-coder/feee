@@ -5,13 +5,13 @@ import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com
 
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyB9f48oJP6e_HkkyD8mgXLofq0S8TMfih0",
-  authDomain: "result-aistudio.firebaseapp.com",
-  projectId: "result-aistudio",
-  storageBucket: "result-aistudio.firebasestorage.app",
-  messagingSenderId: "515968357351",
-  appId: "1:515968357351:web:abed438db3e752375fe342",
-  measurementId: "G-F31CJQC8T7"
+  apiKey: "AIzaSyDdUyk_yvZoQ1JI1pPLJTK51U91BVO0XSA",
+  authDomain: "bright-tube-p07pf.firebaseapp.com",
+  projectId: "bright-tube-p07pf",
+  storageBucket: "bright-tube-p07pf.firebasestorage.app",
+  messagingSenderId: "239455260650",
+  appId: "1:239455260650:web:5c3d61cbd8fcfefccc6c93",
+  firestoreDatabaseId: "ai-studio-feee-81b4709b-982c-4f96-b21b-c346855b9aa2"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -29,7 +29,7 @@ if (!canEnableAppCheck) {
   console.warn('[Security] App Check is not enabled yet: set window.__APP_CHECK_SITE_KEY with a valid reCAPTCHA v3 site key.');
 }
 
-const db = getFirestore(app);
+const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 const auth = getAuth(app);
 
 export { db, auth, appCheck, canEnableAppCheck };

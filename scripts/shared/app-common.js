@@ -10,8 +10,9 @@ export const escapeHtml = (value = '') => String(value)
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 export const sanitizePhone = (value = '') => String(value).replace(/[^\d+]/g, '');
-export const sanitizeUrl = (value = '', allowedProtocols = ['https:', 'http:', 'mailto:', 'tel:']) => {
+export const sanitizeUrl = (value = '', allowedProtocols = ['https:', 'http:', 'mailto:', 'tel:', 'data:']) => {
     if (!value) return '';
+    if (value.startsWith('data:')) return value;
     try {
         const parsed = new URL(value, window.location.origin);
         return allowedProtocols.includes(parsed.protocol) ? parsed.href : '';
@@ -84,61 +85,21 @@ export const initGlobalModalScrollLock = () => {
 export const registerServiceWorker = () => {
     if (!('serviceWorker' in navigator)) return;
     window.addEventListener('load', () => {
-        const ensureUpdateOverlay = () => {
-            let overlay = document.getElementById('sw-update-overlay');
-            if (overlay) return overlay;
-            overlay = document.createElement('div');
-            overlay.id = 'sw-update-overlay';
-            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.7);display:none;align-items:center;justify-content:center;z-index:9999;padding:16px;';
-            overlay.innerHTML = `<div style="background:#fff;border-radius:14px;padding:16px;max-width:360px;width:100%;box-shadow:0 20px 40px rgba(0,0,0,.2);">
-                <h3 style="font-weight:800;font-size:18px;margin-bottom:6px;">Update Available</h3>
-                <p id="sw-update-meta" style="font-size:13px;color:#475569;margin-bottom:10px;">New version is ready.</p>
-                <div style="height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;"><div id="sw-update-progress" style="height:100%;width:0%;background:#2563eb;"></div></div>
-                <div id="sw-update-size" style="font-size:12px;color:#64748b;margin-top:8px;">0 MB / 0 MB</div>
-                <button id="sw-update-btn" style="margin-top:12px;width:100%;background:#2563eb;color:#fff;font-weight:700;border:none;border-radius:10px;padding:10px;">Update</button>
-            </div>`;
-            document.body.appendChild(overlay);
-            return overlay;
-        };
-
         navigator.serviceWorker.register('./sw.js').then((registration) => {
-            const overlay = ensureUpdateOverlay();
-            const meta = overlay.querySelector('#sw-update-meta');
-            const progress = overlay.querySelector('#sw-update-progress');
-            const size = overlay.querySelector('#sw-update-size');
-            const btn = overlay.querySelector('#sw-update-btn');
-            const showOverlay = () => { overlay.style.display = 'flex'; };
-            const updateWithWaitingWorker = () => {
-                if (!registration.waiting) return;
-                btn.disabled = true;
-                btn.textContent = 'Updating...';
-                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-            };
-
-            btn.addEventListener('click', updateWithWaitingWorker);
-            if (registration.waiting) showOverlay();
             registration.addEventListener('updatefound', () => {
-                showOverlay();
-                meta.textContent = 'Downloading update package...';
-            });
-            navigator.serviceWorker.addEventListener('message', (event) => {
-                if (event.data?.type === 'SW_INSTALL_PROGRESS') {
-                    const loadedMb = (Number(event.data.loaded || 0) / (1024 * 1024));
-                    const totalMb = (Number(event.data.total || 0) / (1024 * 1024));
-                    const pct = event.data.total ? Math.min(100, (loadedMb / totalMb) * 100) : 0;
-                    progress.style.width = `${pct.toFixed(0)}%`;
-                    size.textContent = `${loadedMb.toFixed(2)} MB / ${totalMb.toFixed(2)} MB`;
-                }
-                if (event.data?.type === 'SW_UPDATE_READY') {
-                    showOverlay();
-                    meta.textContent = 'Update ready. Click Update to continue.';
-                    btn.disabled = false;
-                    btn.textContent = 'Update';
+                const installingWorker = registration.installing;
+                if (installingWorker) {
+                    installingWorker.addEventListener('statechange', () => {
+                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log('[Service Worker] New update available, will activate on next load.');
+                        }
+                    });
                 }
             });
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                window.location.reload();
-            });
+            // Skip waiting automatically if there is a waiting worker to install immediately
+            if (registration.waiting) {
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
         }).catch((error) => {
             console.warn('Service worker registration failed.', error);
         });
