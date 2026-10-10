@@ -1002,7 +1002,7 @@ document.getElementById('save-my-class-btn')?.addEventListener('click', async ()
     const msg = document.getElementById('my-class-save-msg');
     
     if (isCurrentAdmin) {
-        alert("അഡ്മിൻ അക്കൗണ്ടിന് പ്രത്യേകമായി ക്ലാസുകൾ അസൈൻ ചെയ്യാൻ സാധിക്കില്ല. ക്ലാസ്സ് ഡ്യൂട്ടി എടുക്കാൻ സ്റ്റാഫ് ആയി ലോഗിൻ ചെയ്യുക.");
+        alert("Admin accounts cannot be assigned classes specifically. Please login as staff to take class duty.");
         return;
     }
 
@@ -1024,12 +1024,12 @@ document.getElementById('save-my-class-btn')?.addEventListener('click', async ()
             });
             
             if (msg) {
-                msg.textContent = 'വിവരങ്ങൾ ഡാറ്റാബേസിൽ സേവ് ചെയ്തു!';
+                msg.textContent = 'Details saved in the database!';
                 msg.classList.remove('opacity-0');
                 setTimeout(() => { msg.classList.add('opacity-0'); }, 3000);
             }
         } else {
-            alert("നിങ്ങളുടെ പ്രൊഫൈൽ സിസ്റ്റത്തിൽ കണ്ടെത്താനായില്ല. ദയവായി അഡ്മിനെ ബന്ധപ്പെടുക.");
+            alert("Your profile was not found in the system. Please contact admin.");
         }
     } catch (error) {
         console.error('Failed to save My Class Duty details', error);
@@ -2106,13 +2106,13 @@ document.getElementById('bulk-download-btn')?.addEventListener('click', () => {
     const defFee = document.getElementById('bulk-default-fee').value;
 
     if (!year || !targetClass || !defFee) {
-        alert("ദയവായി Academic Year, Target Class, Default Fee എന്നിവ നൽകുക.");
+        alert("Please provide Academic Year, Target Class, and Default Fee.");
         return;
     }
 
     const filteredStudents = allStudentsRaw.filter(s => s.class === targetClass && (s.academicYear || currentWorkingAcademicYear) === year);
     if (filteredStudents.length === 0) {
-        alert("ഈ ക്ലാസ്സിൽ ഈ അക്കാദമിക് വർഷം വിദ്യാർത്ഥികൾ ആരും ഇല്ല.");
+        alert("No students found in this class for this academic year.");
         return;
     }
 
@@ -2122,7 +2122,7 @@ document.getElementById('bulk-download-btn')?.addEventListener('click', () => {
     );
 
     if (monthlyItems.length === 0) {
-        alert("ഈ അക്കാദമിക് വർഷത്തിൽ പ്രതിമാസ ഫീസ് ഇനങ്ങൾ (Monthly Fee Items) കണ്ടെത്തിയില്ല.");
+        alert("No monthly fee items found for this academic year.");
         return;
     }
 
@@ -2173,7 +2173,7 @@ document.getElementById('bulk-download-btn')?.addEventListener('click', () => {
         XLSX.writeFile(wb, `Bulk_Fee_Template_${safeClassName}_${year}.xlsx`);
     } catch (e) {
         console.error("Excel generation failed:", e);
-        alert("ടെമ്പ്ലേറ്റ് നിർമ്മിക്കുന്നതിൽ എറർ സംഭവിച്ചു.");
+        alert("Error occurred while creating the template.");
     }
 });
 
@@ -2184,7 +2184,7 @@ const handleBulkFileSelection = (file) => {
     const targetClass = document.getElementById('bulk-class').value;
 
     if (!year || !targetClass) {
-        alert("ദയവായി Academic Year ഉം Target Class ഉം സെലക്ട് ചെയ്ത ശേഷം ഫയൽ അപ്‌ലോഡ് ചെയ്യുക.");
+        alert("Please select Academic Year and Target Class before uploading the file.");
         document.getElementById('bulk-file-input').value = '';
         return;
     }
@@ -2202,13 +2202,13 @@ const handleBulkFileSelection = (file) => {
             const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
             
             if (rows.length < 2) {
-                alert("ഫയലിൽ ഡാറ്റ കണ്ടെത്തിയില്ല.");
+                alert("No data found in the file.");
                 return;
             }
 
             const headers = rows[0];
             if (headers[0] !== 'Student_ID' || headers[1] !== 'Admission_No') {
-                alert("തെറ്റായ ഫയൽ ഫോർമാറ്റ്. ദയവായി ഡൗൺലോഡ് ചെയ്ത ടെമ്പ്ലേറ്റ് മാത്രം ഉപയോഗിക്കുക.");
+                alert("Invalid file format. Please use only the downloaded template.");
                 return;
             }
 
@@ -2229,7 +2229,7 @@ const handleBulkFileSelection = (file) => {
 
         } catch (error) {
             console.error("Parse Error:", error);
-            alert("ഫയൽ വായിക്കുന്നതിൽ എറർ സംഭവിച്ചു. ശരിയായ Excel/CSV ഫയലാണോ എന്ന് ഉറപ്പുവരുത്തുക.");
+            alert("Error reading file. Ensure it is a valid Excel/CSV file.");
             document.getElementById('bulk-file-input').value = '';
         }
     };
@@ -2347,7 +2347,7 @@ document.getElementById('bulk-start-upload-btn')?.addEventListener('click', asyn
     }
 
     if (paymentOperations.length === 0) {
-        alert("അപ്‌ലോഡ് ചെയ്യാൻ സാധുവായ ഫീസ് ഡാറ്റയൊന്നും കണ്ടെത്തിയില്ല. (മുമ്പ് അടച്ചവ ഒഴിവാക്കപ്പെട്ടു).");
+        alert("No valid fee data found to upload (previously paid items were excluded).");
         setupBulkUploadUI();
         return;
     }
@@ -2378,14 +2378,14 @@ document.getElementById('bulk-start-upload-btn')?.addEventListener('click', asyn
         progressText.textContent = "Upload Complete!";
         
         setTimeout(() => {
-            alert(`വിജയകരം! ${successCount} ഫീസ് റെക്കോർഡുകൾ സിസ്റ്റത്തിൽ അപ്ഡേറ്റ് ചെയ്തു.`);
+            alert(`Success! ${successCount} fee records updated in the system.`);
             setupBulkUploadUI();
             document.querySelector('.nav-link[data-target="dashboard-page"]')?.click();
         }, 800);
 
     } catch (error) {
         console.error("Bulk Upload Error:", error);
-        alert("അപ്‌ലോഡ് ചെയ്യുന്നതിനിടയിൽ എറർ സംഭവിച്ചു. നെറ്റ്വർക്ക് പരിശോധിക്കുക.");
+        alert("Error occurred during upload. Please check your network.");
         setupBulkUploadUI();
     }
 });
@@ -2823,7 +2823,7 @@ document.getElementById('history-content-container').addEventListener('click', e
     if(delBtn) {
         const tid = delBtn.dataset.tid;
         document.getElementById('confirm-title').textContent = "Delete Payment";
-        document.getElementById('confirm-message').innerHTML = `<p class="text-gray-800 font-medium">ഈ പേയ്‌മെന്റ് പൂർണ്ണമായും ഡിലീറ്റ് ചെയ്യട്ടെ?</p>`;
+        document.getElementById('confirm-message').innerHTML = `<p class="text-gray-800 font-medium">Delete this payment completely?</p>`;
         document.getElementById('confirm-popup').classList.remove('hidden');
         document.getElementById('confirm-popup').classList.add('flex');
 
